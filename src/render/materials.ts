@@ -85,10 +85,15 @@ export const lampLight = Fn(([P, Nrm, albedo, specAmount, shininess]: N[]) => {
   return LAMP_COLOR.mul(diffuse.mul(albedo).add(specular.mul(specAmount)));
 });
 
-/** Anti-aliased box mask in [x0,x1]×[y0,y1]. */
+/**
+ * Anti-aliased box mask in [x0,x1]×[y0,y1]. Pass derivative widths taken from
+ * the continuous coordinates: fwidth() of a fract()'d value spikes at cell
+ * borders and smears into dashed lines.
+ */
+let AAW: { x: N; y: N } | null = null;
 const rect = (fx: N, fy: N, x0: number, x1: number, y0: number, y1: number): N => {
-  const wx = fwidth(fx).max(0.001);
-  const wy = fwidth(fy).max(0.001);
+  const wx = AAW!.x;
+  const wy = AAW!.y;
   return smoothstep(wx.negate().add(x0), wx.add(x0), fx)
     .mul(smoothstep(wx.add(x1), wx.negate().add(x1), fx))
     .mul(smoothstep(wy.negate().add(y0), wy.add(y0), fy))
@@ -117,6 +122,10 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
   const cx = floor(u.div(cellW));
   const fx = fract(u.div(cellW));
   const ground = step(v, G); // 1 on the ground floor
+  AAW = {
+    x: fwidth(u.div(cellW)).max(0.001),
+    y: fwidth(v).div(mix(float(FH), float(G), ground)).max(0.001),
+  };
   const upper = v.sub(G).div(FH);
   const floorIdx = select(ground.greaterThan(0.5), float(0), floor(upper).add(1));
   const fy = select(ground.greaterThan(0.5), v.div(G), fract(upper));

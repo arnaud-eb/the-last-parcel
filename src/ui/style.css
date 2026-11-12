@@ -258,3 +258,28 @@ html, body {
   white-space: pre;
 }
 @media (pointer: coarse) { .debug { bottom: auto; top: calc(110px + var(--sat)); } }
+
+/* Short landscape phones: compact HUD so the road stays visible. */
+@media (max-height: 500px) {
+  .clock { padding: 5px 10px 6px; min-width: 104px; border-radius: 12px; }
+  .clock .time { font-size: 20px; }
+  .clock .left { font-size: 10px; }
+  .clock .bar { height: 3px; margin-top: 4px; }
+  .stat { padding: 5px 9px; min-width: 54px; border-radius: 12px; }
+  .stat b { font-size: 17px; }
+  .stat span { font-size: 9px; letter-spacing: 0.5px; }
+  .target-card { font-size: 12px; padding: 4px 10px; border-radius: 12px; }
+  .toasts { top: auto; bottom: calc(14px + var(--sab)); width: min(46vw, 360px); }
+  .toast { font-size: 12px; padding: 6px 10px; border-radius: 12px; }
+  .toast .from { font-size: 9px; }
+  .wheel { width: 124px; height: 76px; left: calc(18px + var(--sal)); bottom: calc(14px + var(--sab)); }
+  .wheel .knob { width: 54px; height: 54px; margin-left: -27px; top: 9px; }
+  .pedal.gas { width: 84px; height: 100px; }
+  .pedal.brake { width: 72px; height: 72px; }
+  .pedals { right: calc(14px + var(--sar)); bottom: calc(14px + var(--sab)); gap: 10px; }
+  .handover { width: 56px; height: 56px; bottom: calc(30% + var(--sab)); }
+  .card { padding: 16px 22px; }
+  .card h1 { font-size: 30px; }
+  .card .big { font-size: 34px; }
+  .debug { top: calc(64px + var(--sat)); bottom: auto; font-size: 10px; }
+}

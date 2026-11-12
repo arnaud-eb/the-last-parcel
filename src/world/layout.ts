@@ -123,7 +123,8 @@ export function buildLayout(): Layout {
         chimney: rng.next() < 0.6,
       });
       // Every other building is a deliverable address.
-      if (n % 2 === 1 && cz < STREET_Z_START - 15) {
+      // Keep stops a real drive away from the depot.
+      if (n % 2 === 1 && cz < STREET_Z_START - 40) {
         const name = STREET_NAMES[(n + (side === 1 ? 1 : 0)) % STREET_NAMES.length]!;
         const num = 2 * n + (side === 1 ? 2 : 1);
         const zoneOff = ROAD_HALF - 1.4;

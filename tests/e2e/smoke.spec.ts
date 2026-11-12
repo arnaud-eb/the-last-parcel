@@ -38,11 +38,13 @@ test('a bot can drive from the depot to the delivery and complete it', async ({ 
       const diff = Math.atan2(Math.sin(want - v.heading), Math.cos(want - v.heading));
       // Steering right (+1) turns the heading clockwise seen from above (heading decreases).
       const steer = Math.max(-1, Math.min(1, -diff * 2.5));
-      const slow = dist < 12;
+      // Target speed falls with distance; brake hard once inside the ring.
+      const inside = dist < target.radius - 1;
+      const wantSpeed = inside ? 0 : Math.min(10, 0.8 + dist * 0.5);
       const s = g.step(1 / 60, {
-        steer,
-        throttle: !slow || (dist > 1.5 && v.speed < 2) ? 0.7 : 0,
-        brake: slow && v.speed > 2 ? 1 : 0,
+        steer: inside ? 0 : steer,
+        throttle: v.speed < wantSpeed - 0.5 ? 0.7 : 0,
+        brake: v.speed > wantSpeed + 0.5 ? 1 : 0,
       });
       if (s.phase === 'ended') return { ...s, steps: i };
     }

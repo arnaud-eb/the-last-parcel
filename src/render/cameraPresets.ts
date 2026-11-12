@@ -8,7 +8,7 @@ export const CAMERA_PRESETS = {
   /** Gameplay view: chase camera behind the van at the depot end. */
   '1-chase-start': { pos: [1.2, 4.4, 91], target: [0.6, 1.4, 70] },
   /** Eye level mid-street, looking toward the square, tree and spires. */
-  '2-street-eye': { pos: [-2.5, 1.7, 40], target: [1.5, 4.5, -10] },
+  '2-street-eye': { pos: [0.6, 1.7, 40], target: [2, 4.2, -10] },
   /** High oblique "miniature town" view over the rooftops. */
   '3-aerial': { pos: [34, 38, 64], target: [0, 0, 8] },
   /** In the square, looking at the tree. */
