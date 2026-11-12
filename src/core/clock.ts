@@ -38,7 +38,8 @@ export class ShiftClock {
 
 /** Minutes since 4:00pm → "4:07pm". */
 export function formatClock(minutes: number): string {
-  const total = Math.floor(minutes) + SHIFT_START_HOUR * 60;
+  // Epsilon: summed fixed steps land a hair under whole minutes (24.99999 s → 4:09pm).
+  const total = Math.floor(minutes + 1e-6) + SHIFT_START_HOUR * 60;
   const h24 = Math.floor(total / 60) % 24;
   const m = total % 60;
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;

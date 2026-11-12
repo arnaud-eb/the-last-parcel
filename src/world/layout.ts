@@ -105,7 +105,7 @@ export function buildLayout(): Layout {
       const cz = z - width / 2;
       const f = frameAt(cz);
       const depth = rng.range(10, 13);
-      const off = FACADE_OFFSET + depth / 2;
+      const off = FACADE_OFFSET + depth / 2 + rng.range(0, 0.35);
       const floors = rng.int(2, 4);
       buildings.push({
         x: centerX(cz) + f.nx * off * side,

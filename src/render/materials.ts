@@ -77,7 +77,7 @@ export const lampLight = Fn(([P, Nrm, albedo, specAmount, shininess]: N[]) => {
     const L = l.xyz.sub(P);
     const d2 = dot(L, L);
     const Ld = L.mul(inverseSqrt(d2));
-    const att = l.w.div(d2.mul(0.18).add(1)).mul(smoothstep(500, 120, d2));
+    const att = l.w.div(d2.mul(0.5).add(1)).mul(smoothstep(400, 100, d2));
     diffuse.addAssign(max(dot(Nrm, Ld), 0).mul(att));
     const H = normalize(Ld.add(V));
     specular.addAssign(pow(max(dot(Nrm, H), 0), shininess).mul(att));
@@ -157,19 +157,34 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
   const h2 = hash(wid.add(57.3));
   const litFrac = mix(mix(0.2, 0.62, U.lightsOn), 0.92, ground.mul(isShop));
   const lit = step(h1, litFrac);
-  const warm = mix(vec3(1.0, 0.42, 0.13), vec3(1.0, 0.7, 0.38), h2);
+  const warm = mix(vec3(1.0, 0.3, 0.05), vec3(1.0, 0.5, 0.16), h2);
   const tv = step(0.94, h2); // the odd cool TV glow
   const glowCol = mix(warm, vec3(0.45, 0.6, 1.0), tv);
   // Interior falloff: brighter at the top, curtains darken the sides.
-  const interior = smoothstep(0.0, 1.0, fy).mul(0.5).add(0.5).mul(smoothstep(0.0, 0.18, fx.sub(0.3).min(float(0.7).sub(fx)).add(0.05)).mul(0.6).add(0.4));
-  const glowStrength = mix(float(2.4), float(3.2), ground.mul(isShop)).mul(h1.mul(0.6).add(0.7));
+  // Interior: a warm lamp hotspot somewhere in the room, darker toward the sill,
+  // curtains at the sides (upper floors), glazing bars across the pane.
+  const hx = mix(0.38, 0.62, hash(wid.add(11.1)));
+  const hot = exp(fx.sub(hx).mul(fx.sub(hx)).add(fy.sub(0.7).mul(fy.sub(0.7))).mul(-28)).mul(0.9);
+  const grad = smoothstep(0.1, 0.9, fy).mul(0.45).add(0.4);
+  const curtain = smoothstep(0.37, 0.33, fx).add(smoothstep(0.63, 0.67, fx)).mul(float(1).sub(ground)).mul(step(0.35, hash(wid.add(3.3))));
+  const barsUp = float(1).sub(smoothstep(0.006, 0.014, abs(fx.sub(0.5)))).max(float(1).sub(smoothstep(0.006, 0.014, abs(fy.sub(0.6)))));
+  const barsShop = float(1).sub(smoothstep(0.004, 0.01, abs(fract(fx.sub(0.1).div(0.8).mul(3).add(0.5)).sub(0.5).div(3)))).mul(isShop);
+  const bars = mix(barsUp, barsShop, ground).mul(win);
+  const interior = grad.add(hot).mul(float(1).sub(curtain.mul(0.55))).mul(float(1).sub(bars));
+  const glowStrength = mix(float(2.0), float(2.8), ground.mul(isShop)).mul(h1.mul(0.6).add(0.7));
 
   // Wall albedo: plaster colour + noise + darker stone plinth + string courses.
   const P = positionWorld;
   const noise = mx_noise_float(P.mul(0.9)).mul(0.07).add(mx_noise_float(P.mul(5.0)).mul(0.03));
-  const base = vertexColor().rgb.mul(noise.add(0.92));
+  // Plaster reads cool at dusk: slightly desaturated and darker, shadowed under the eaves.
+  const vc = vertexColor().rgb;
+  const plaster = vc.mul(0.72);
+  const eave = smoothstep(H.sub(2.2), H, v).mul(float(1).sub(plain)).mul(0.35);
+  const base = plaster.mul(noise.add(0.92)).mul(float(1).sub(eave));
   const plinth = step(v, 0.55);
-  const course = float(1).sub(smoothstep(0.02, 0.07, abs(v.sub(G).sub(floor(v.sub(G).div(FH).add(0.5)).mul(FH))))).mul(step(G - 0.1, v));
+  const dLine = abs(v.sub(G).sub(floor(v.sub(G).div(FH).add(0.5)).mul(FH)));
+  const aa = fwidth(v).max(0.001);
+  const course = float(1).sub(smoothstep(aa.negate().add(0.09), aa.add(0.09), dLine)).mul(step(G - 0.1, v)).mul(float(1).sub(plain));
   let wall = mix(base, base.mul(0.55).add(vec3(0.02, 0.025, 0.03)), plinth);
   wall = wall.mul(float(1).sub(course.mul(0.18)));
   // Snow dusting at the foot of walls.
@@ -186,16 +201,17 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
   albedo = mix(albedo, shutterCol, shutters);
   albedo = mix(albedo, SNOW_ALBEDO.mul(1.05), sill);
   albedo = mix(albedo, glass, win);
+  albedo = mix(albedo, vec3(0.82, 0.8, 0.76), bars);
   albedo = mix(albedo, vec3(0.16, 0.09, 0.05), doorM);
 
   // Doors get a warm fanlight; unlit glass reflects a little sky.
   const fan = doorM.mul(smoothstep(0.52, 0.6, fy)).mul(lit.max(isShop));
   const glow = glowCol.mul(win.mul(lit).mul(interior).mul(glowStrength))
     .add(vec3(1.0, 0.55, 0.2).mul(fan.mul(2.0)))
-    .add(U.horizon.mul(win.mul(float(1).sub(lit)).mul(0.25)));
+    .add(U.horizon.mul(win.mul(float(1).sub(lit)).mul(0.08)));
 
   m.colorNode = albedo;
-  m.roughnessNode = mix(float(0.92), float(0.2), win);
+  m.roughnessNode = mix(float(0.92), float(0.35), win);
   m.metalnessNode = float(0);
   m.emissiveNode = glow.add(lampLight(P, normalWorld, albedo, win.mul(1.5).add(0.04), float(24)));
   return m;
@@ -251,13 +267,14 @@ export function cobbleMaterial(roadHalf: number): THREE.MeshStandardNodeMaterial
   const along = (uv() as N).y;
   const P = positionWorld;
 
-  const p = vec2(lat.div(0.3), along.div(0.22)).toVar();
-  const row = floor(p.y);
-  p.x.addAssign(fract(row.mul(0.5)));
+  const row = floor(along.div(0.22));
+  const p = vec2(lat.div(0.3).add(fract(row.mul(0.5))), along.div(0.22));
   const cell = floor(p);
   const f = fract(p).sub(0.5);
   const d = length(max(abs(f).sub(vec2(0.3, 0.26)), 0.0));
-  const stone = float(1).sub(smoothstep(0.1, 0.2, d));
+  // Fade the pattern out where stones get smaller than a few pixels (avoids moiré).
+  const px = fwidth(p).length();
+  const stone = mix(float(1).sub(smoothstep(0.1, 0.2, d)), float(0.75), smoothstep(0.05, 0.22, px));
   const hs = hash(cell.x.add(cell.y.mul(311.7)));
   const stoneCol = mix(vec3(0.075, 0.08, 0.095), vec3(0.15, 0.13, 0.12), hs);
 

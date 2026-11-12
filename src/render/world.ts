@@ -6,6 +6,8 @@ import { buildLamps, buildLights, buildTree, lanternPosition } from '../world/pr
 import { MAX_LAMPS, U } from './materials';
 import { setupSky } from './sky';
 
+const LAMP_INTENSITY = 5.0;
+
 /** The visual town: builds the scene once and updates per-frame lighting uniforms. */
 export class WorldView {
   readonly layout: Layout;
@@ -39,7 +41,7 @@ export class WorldView {
       const v = arr[k]!;
       if (k < n) {
         const p = this.lanterns[this.order[k]!]!;
-        v.set(p.x, p.y, p.z, 1.6);
+        v.set(p.x, p.y, p.z, LAMP_INTENSITY);
       } else {
         v.set(0, -1000, 0, 0);
       }

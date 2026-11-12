@@ -15,7 +15,7 @@ export async function createRenderer(
   });
   await renderer.init();
   renderer.toneMapping = THREE.AgXToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   const backend: Backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? 'webgpu' : 'webgl2';
   return { renderer, backend };

@@ -20,6 +20,12 @@ describe('clock', () => {
     expect(formatClock(120)).toBe('6:00pm');
   });
 
+  it('is not thrown off by summed fixed steps', () => {
+    const c = new ShiftClock();
+    for (let i = 0; i < 1500; i++) c.advance(1 / 60);
+    expect(c.format()).toBe('4:10pm');
+  });
+
   it('clamps at 6pm and reports over', () => {
     const c = new ShiftClock();
     c.advance(1000);

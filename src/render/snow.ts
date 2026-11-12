@@ -54,7 +54,7 @@ export class Snow {
       for (let k = 0; k < 4; k++) {
         const l = U.lamps.element(k) as N;
         const d2 = dot(l.xyz.sub(world), l.xyz.sub(world));
-        acc.addAssign(LAMP_COLOR.mul(l.w.mul(1.6).div(d2.mul(0.5).add(1))));
+        acc.addAssign(LAMP_COLOR.mul(l.w.mul(0.8).div(d2.mul(0.5).add(1))));
       }
       const toFlake = world.sub(U.headPos);
       const dist = length(toFlake);

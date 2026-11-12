@@ -7,9 +7,9 @@ import { U, fogFactor } from './materials';
 type N = any;
 
 // Blue hour (4pm, just after sunset) → full night (6pm).
-const HORIZON_START = new THREE.Color(0.2, 0.3, 0.52);
-const HORIZON_END = new THREE.Color(0.035, 0.05, 0.1);
-const ZENITH_START = vec3(0.03, 0.065, 0.19);
+const HORIZON_START = new THREE.Color(0.11, 0.18, 0.36);
+const HORIZON_END = new THREE.Color(0.025, 0.035, 0.075);
+const ZENITH_START = vec3(0.02, 0.045, 0.15);
 const ZENITH_END = vec3(0.006, 0.01, 0.03);
 /** Where the sun went down: low warm glow on that side of the sky. */
 const SUNSET_DIR = vec2(0.6, -0.8);
@@ -46,8 +46,8 @@ export function setupSky(scene: THREE.Scene): { update(progress: number): void }
 
   scene.fogNode = fog(U.horizon, fogFactor());
 
-  const hemi = new THREE.HemisphereLight(0x6a86c8, 0x1a1c28, 1.1);
-  const moon = new THREE.DirectionalLight(0x9db4ef, 0.55);
+  const hemi = new THREE.HemisphereLight(0x4f7bc4, 0x141824, 0.55);
+  const moon = new THREE.DirectionalLight(0x9db4ef, 0.35);
   moon.position.set(-30, 60, 20);
   scene.add(hemi, moon);
 
@@ -56,10 +56,10 @@ export function setupSky(scene: THREE.Scene): { update(progress: number): void }
       U.progress.value = progress;
       U.horizon.value.copy(horizonColor(progress));
       // Visibility drops toward 6pm as snowfall rises.
-      U.fogDensity.value = 0.011 + progress * 0.012;
+      U.fogDensity.value = 0.0065 + progress * 0.009;
       // Ambient light dims as the sky goes dark.
-      hemi.intensity = 1.15 - progress * 0.6;
-      moon.intensity = 0.55 - progress * 0.25;
+      hemi.intensity = 0.55 - progress * 0.3;
+      moon.intensity = 0.35 - progress * 0.18;
       U.lightsOn.value = Math.min(1, 0.35 + progress * 0.9);
     },
   };
