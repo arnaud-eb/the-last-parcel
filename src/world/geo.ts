@@ -12,7 +12,12 @@ export class GeoBuilder {
   private extra: number[] = [];
   private idx: number[] = [];
 
-  constructor(private readonly extraName: string | null = null, private readonly extraSize = 0) {}
+  private readonly extraSize: number;
+
+  /** `extras`: custom per-vertex attributes, e.g. [['aWall', 4]]. Pass their values concatenated. */
+  constructor(private readonly extras: readonly [name: string, size: number][] = []) {
+    this.extraSize = extras.reduce((n, [, s]) => n + s, 0);
+  }
 
   get vertexCount(): number {
     return this.pos.length / 3;
@@ -82,7 +87,14 @@ export class GeoBuilder {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nrm, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uvs, 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
-    if (this.extraName) g.setAttribute(this.extraName, new THREE.Float32BufferAttribute(this.extra, this.extraSize));
+    let offset = 0;
+    for (const [name, size] of this.extras) {
+      const n = this.vertexCount;
+      const data = new Float32Array(n * size);
+      for (let v = 0; v < n; v++) for (let k = 0; k < size; k++) data[v * size + k] = this.extra[v * this.extraSize + offset + k]!;
+      g.setAttribute(name, new THREE.BufferAttribute(data, size));
+      offset += size;
+    }
     g.setIndex(this.idx);
     g.computeBoundingSphere();
     return g;

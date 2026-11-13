@@ -159,6 +159,13 @@ export class App {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Fixed free camera (test hook only). Clear with setCameraPreset(null). */
+  setCamera(pos: [number, number, number], target: [number, number, number]): void {
+    this.presetName = '1-chase-start'; // any non-null value disables the chase camera
+    this.camera.position.set(...pos);
+    this.camera.lookAt(...target);
+  }
+
   /** Advance the simulation by dt seconds in fixed steps (used by the loop and the ?test hook). */
   step(dt: number): void {
     let remaining = dt;

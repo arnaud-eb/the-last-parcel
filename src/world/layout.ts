@@ -11,8 +11,8 @@ export const ROAD_HALF = 3.6;
 export const SIDEWALK = 2.0;
 export const FACADE_OFFSET = ROAD_HALF + SIDEWALK; // centreline → facade
 export const CURB_HEIGHT = 0.14;
-export const GROUND_FLOOR_H = 3.6;
-export const FLOOR_H = 3.0;
+export { GROUND_FLOOR_H, FLOOR_H } from './facade';
+import { GROUND_FLOOR_H, FLOOR_H, facadeCols } from './facade';
 
 export const STREET_Z_START = 92; // depot end (closed by a building row)
 export const STREET_Z_END = -38; // where the square opens
@@ -56,7 +56,34 @@ export type Building = {
   /** Background buildings get no collider. */
   solid: boolean;
   chimney: boolean;
+  /** Facade details, derived from `seed` (see decorate()). */
+  shop: boolean;
+  doorCol: number;
+  /** Shutter colour index 0..2, or -1 for none. */
+  shutters: number;
+  /** Street-facing front gets 3D relief (frames, sills, steps, awnings). */
+  relief: boolean;
+  dormers: number;
 };
+
+type BuildingBase = Omit<Building, 'shop' | 'doorCol' | 'shutters' | 'relief' | 'dormers'>;
+
+/**
+ * Facade details from the building's own seed, so they never shift the rest of
+ * the layout (camera presets depend on it staying put).
+ */
+function decorate(b: BuildingBase): Building {
+  const r = createRng(Math.floor(b.seed * 2 ** 32));
+  const cols = facadeCols(b.width);
+  return {
+    ...b,
+    shop: r.next() < 0.55,
+    doorCol: r.int(0, cols - 1),
+    shutters: r.next() < 0.45 ? r.int(0, 2) : -1,
+    relief: b.solid,
+    dormers: b.ridgeAlong && b.width > 7 ? r.int(0, 2) : 0,
+  };
+}
 
 export type Lamp = { x: number; z: number; /** direction the arm points */ rot: number };
 export type StringLight = { ax: number; az: number; bx: number; bz: number; y: number; sag: number };
@@ -93,7 +120,7 @@ const STREET_NAMES = [
 
 export function buildLayout(): Layout {
   const rng = createRng('kuerier-upper-town-v1');
-  const buildings: Building[] = [];
+  const buildings: BuildingBase[] = [];
   const stops: Stop[] = [];
 
   // Street frontage, both sides.
@@ -206,7 +233,7 @@ export function buildLayout(): Layout {
 
   const sz = STREET_Z_START - 10;
   return {
-    buildings,
+    buildings: buildings.map(decorate),
     lamps,
     strings,
     stops,
@@ -223,7 +250,7 @@ function backdrop(
   width: number,
   depth: number,
   solid: boolean,
-): Building {
+): BuildingBase {
   return {
     x,
     z,

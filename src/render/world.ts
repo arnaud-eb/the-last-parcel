@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { buildLayout, type Layout } from '../world/layout';
 import { buildBuildings } from '../world/buildings';
+import { buildRelief } from '../world/relief';
 import { buildStreet } from '../world/street';
 import { buildLamps, buildLights, buildTree, lanternPosition } from '../world/props';
 import { MAX_LAMPS, U } from './materials';
@@ -19,6 +20,7 @@ export class WorldView {
     this.layout = buildLayout();
     scene.add(buildStreet());
     scene.add(buildBuildings(this.layout.buildings, this.layout.spires));
+    scene.add(buildRelief(this.layout.buildings));
     scene.add(buildLamps(this.layout.lamps));
     scene.add(buildLights(this.layout.strings));
     scene.add(buildTree());

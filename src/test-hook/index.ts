@@ -49,6 +49,8 @@ export function installTestHook(app: App): void {
     setSeed: (seed: string) => app.restart(seed),
     deliver: (id?: string) => app.game.deliver(id ?? app.game.targetId ?? ''),
     setCameraPreset: (name: CameraPresetName | null) => app.setCameraPreset(name),
+    /** Free camera for ad-hoc inspection (not for milestone shots: use presets). */
+    setCamera: (pos: [number, number, number], target: [number, number, number]) => app.setCamera(pos, target),
     cameraPresets: Object.keys(CAMERA_PRESETS),
   };
   (window as unknown as { __game: typeof api }).__game = api;

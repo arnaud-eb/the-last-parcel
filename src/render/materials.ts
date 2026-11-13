@@ -132,11 +132,14 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
   // Only floors that fit under the eaves get windows.
   const fits = max(ground, step(floorIdx.mul(FH).add(G), H.add(0.1)));
 
-  const hB = hash(seed.mul(9173.1));
-  const isShop = step(hB, 0.55);
-  const doorCol = floor(hash(seed.mul(3121.7)).mul(cols));
-  const isDoor = ground.mul(step(abs(cx.sub(doorCol)), 0.5));
-  const hasShutters = step(hash(seed.mul(611.3)), 0.45);
+  // Per-wall decisions come from the layout (src/world/layout.ts decorate()),
+  // so the instanced 3D relief lines up with what's painted here.
+  const aFacade = attribute('aFacade', 'vec4') as N;
+  const isShop = aFacade.x;
+  const isDoor = ground.mul(step(abs(cx.sub(aFacade.y)), 0.5));
+  const relief = aFacade.w;
+  const painted = float(1).sub(relief); // frames/sills/shutters are 3D on relief walls
+  const hasShutters = step(0, aFacade.z).mul(painted);
 
   // Window rectangles: upper floors, ground-floor shop fronts, ground-floor windows.
   const upWin = rect(fx, fy, 0.3, 0.7, 0.22, 0.8);
@@ -149,7 +152,7 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
 
   // Frames, shutters, snowy sills.
   const upFrame = rect(fx, fy, 0.27, 0.73, 0.19, 0.83).sub(upWin);
-  const frame = mix(upFrame, float(0), ground).mul(fits).mul(float(1).sub(plain));
+  const frame = mix(upFrame, float(0), ground).mul(fits).mul(float(1).sub(plain)).mul(painted);
   const shutters = rect(fx, fy, 0.12, 0.27, 0.22, 0.8)
     .add(rect(fx, fy, 0.73, 0.88, 0.22, 0.8))
     .mul(hasShutters)
@@ -158,7 +161,9 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
     .mul(float(1).sub(plain));
   const sillUp = rect(fx, fy, 0.25, 0.75, 0.13, 0.19);
   const sillShop = rect(fx, fy, 0.08, 0.92, 0.04, 0.1).mul(isShop).mul(float(1).sub(isDoor));
-  const sill = mix(sillUp, sillShop, ground).mul(fits).mul(float(1).sub(plain));
+  const sill = mix(sillUp, sillShop, ground).mul(fits).mul(float(1).sub(plain)).mul(painted);
+  // On relief walls the glass sits back in a dark reveal inside the 3D frame.
+  const reveal = rect(fx, fy, 0.27, 0.73, 0.19, 0.8).sub(upWin).max(0).mul(float(1).sub(ground)).mul(fits).mul(relief).mul(float(1).sub(plain));
 
   // Which windows are lit. Shops are almost always lit.
   const wid = cx.add(floorIdx.mul(17.0)).add(seed.mul(1013.0));
@@ -199,14 +204,16 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
   // Snow dusting at the foot of walls.
   wall = mix(wall, SNOW_ALBEDO, smoothstep(0.25, 0.0, v).mul(0.8));
 
+  // Same palette as SHUTTERS in src/world/relief.ts.
   const shutterCol = select(
-    hash(seed.mul(77.7)).lessThan(0.33),
+    aFacade.z.lessThan(0.5),
     vec3(0.18, 0.3, 0.2),
-    select(hash(seed.mul(77.7)).lessThan(0.66), vec3(0.16, 0.24, 0.38), vec3(0.4, 0.14, 0.12)),
+    select(aFacade.z.lessThan(1.5), vec3(0.16, 0.24, 0.38), vec3(0.4, 0.14, 0.12)),
   );
   const glass = vec3(0.02, 0.03, 0.05);
-  let albedo = wall;
+  let albedo: N = wall;
   albedo = mix(albedo, vec3(0.86, 0.84, 0.8), frame);
+  albedo = mix(albedo, albedo.mul(0.35), reveal);
   albedo = mix(albedo, shutterCol, shutters);
   albedo = mix(albedo, SNOW_ALBEDO.mul(1.05), sill);
   albedo = mix(albedo, glass, win);
@@ -215,9 +222,9 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
 
   // Doors get a warm fanlight; unlit glass reflects a little sky.
   const fan = doorM.mul(smoothstep(0.52, 0.6, fy)).mul(lit.max(isShop));
-  const glow = glowCol.mul(win.mul(lit).mul(interior).mul(glowStrength))
+  const glow = (glowCol as N).mul(win.mul(lit).mul(interior).mul(glowStrength))
     .add(vec3(1.0, 0.55, 0.2).mul(fan.mul(2.0)))
-    .add(U.horizon.mul(win.mul(float(1).sub(lit)).mul(0.08)));
+    .add((U.horizon as N).mul(win.mul(float(1).sub(lit)).mul(0.08)));
 
   m.colorNode = albedo;
   m.roughnessNode = mix(float(0.92), float(0.35), win);

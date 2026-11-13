@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { GeoBuilder } from './geo';
 import type { Building, Spire } from './layout';
+import { GROUND_FLOOR_H } from './facade';
 import { facadeMaterial, roofMaterial } from '../render/materials';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -13,8 +14,8 @@ const COPPER = [0.14, 0.22, 0.2];
 
 /** All buildings as two merged meshes: walls (facade material) and roofs (snowy roof material). */
 export function buildBuildings(buildings: readonly Building[], spires: readonly Spire[]): THREE.Group {
-  const walls = new GeoBuilder('aWall', 4);
-  const roofs = new GeoBuilder('aRoof', 1);
+  const walls = new GeoBuilder([['aWall', 4], ['aFacade', 4]]);
+  const roofs = new GeoBuilder([['aRoof', 1]]);
   for (const b of buildings) addBuilding(walls, roofs, b);
   for (const s of spires) addSpire(walls, roofs, s);
 
@@ -44,8 +45,12 @@ function addBuilding(walls: GeoBuilder, roofs: GeoBuilder, b: Building): void {
     const len = Math.hypot(bx - ax, bz - az);
     const isFront = i === 0;
     const kind = isFront || b.solid ? 0 : 1;
-    wallQuad(walls, P(ax, 0, az), P(bx, 0, bz), H, len, col, [len, H, b.seed + i * 0.13, i === 2 ? 1 : kind]);
+    // aFacade = (shop, doorCol, shutters, relief). Only the front has a door, shop and 3D relief.
+    const facade = isFront ? [b.shop ? 1 : 0, b.doorCol, b.shutters, b.relief ? 1 : 0] : [0, -1, b.shutters, 0];
+    wallQuad(walls, P(ax, 0, az), P(bx, 0, bz), H, len, col, [len, H, b.seed + i * 0.13, i === 2 ? 1 : kind, ...facade]);
   }
+
+  if (b.relief) stoneBands(walls, roofs, P, w, d, H, b.seed);
 
   // Roof.
   if (b.ridgeAlong) {
@@ -61,6 +66,41 @@ function addBuilding(walls: GeoBuilder, roofs: GeoBuilder, b: Building): void {
     const cz = b.ridgeAlong ? d * 0.25 : 0;
     const top = H + (b.ridgeAlong ? b.roofPitch * d : b.roofPitch * w) * 0.75 + 1.0;
     box(walls, roofs, P, cx, cz, 0.38, 0.38, top - 2.5, top, BRICK, b.seed);
+  }
+}
+
+const SANDSTONE = [0.6, 0.5, 0.36];
+const PLAIN = (seed: number) => [1, 99, seed, 1, 0, -1, -1, 0];
+
+/**
+ * Sandstone trim on a street front: plinth, string course, cornice and corner
+ * quoins, all proud of the plaster. Their tops carry a line of snow.
+ */
+function stoneBands(walls: GeoBuilder, roofs: GeoBuilder, P: (x: number, y: number, z: number) => THREE.Vector3, w: number, d: number, H: number, seed: number): void {
+  const z = -d;
+  const slab = (x0: number, x1: number, y0: number, y1: number, out: number, snowTop: boolean) => {
+    const zf = z - out;
+    const ex = PLAIN(seed);
+    const facing = (x: number, y: number, zz: number) => P(x, y, zz).sub(P(0, 0, 0));
+    walls.quad(P(x1, y0, zf), P(x0, y0, zf), P(x0, y1, zf), P(x1, y1, zf), [0, y0, x1 - x0, y0, x1 - x0, y1, 0, y1], SANDSTONE, ex, facing(0, 0, -1));
+    walls.quad(P(x0, y1, z), P(x0, y1, zf), P(x0, y0, zf), P(x0, y0, z), [0, y1, out, y1, out, y0, 0, y0], SANDSTONE, ex, facing(-1, 0, 0));
+    walls.quad(P(x1, y0, z), P(x1, y0, zf), P(x1, y1, zf), P(x1, y1, z), [0, y0, out, y0, out, y1, 0, y1], SANDSTONE, ex, facing(1, 0, 0));
+    walls.quad(P(x0, y0, z), P(x1, y0, z), P(x1, y0, zf), P(x0, y0, zf), [0, y0, 1, y0, 1, y0, 0, y0], SANDSTONE, ex, facing(0, -1, 0));
+    const top = [P(x0, y1, zf), P(x1, y1, zf), P(x1, y1, z), P(x0, y1, z)] as const;
+    if (snowTop) roofs.quad(top[0], top[1], top[2], top[3], [0, 1, 0, 1, 0, 1, 0, 1], SANDSTONE, [2], UP);
+    else walls.quad(top[0], top[1], top[2], top[3], [0, y1, 1, y1, 1, y1, 0, y1], SANDSTONE, ex, UP);
+  };
+  slab(-w, w, 0, 0.55, 0.07, true); // plinth
+  slab(-w, w, GROUND_FLOOR_H - 0.06, GROUND_FLOOR_H + 0.1, 0.07, true); // string course
+  slab(-w - 0.05, w + 0.05, H - 0.38, H - 0.02, 0.24, false); // cornice (under the eaves)
+  // Quoins: alternating long/short blocks up both corners.
+  for (const side of [-1, 1]) {
+    for (let y = 0.55, i = 0; y < H - 0.45; y += 0.42, i++) {
+      const len = i % 2 ? 0.32 : 0.5;
+      const x0 = side > 0 ? w - len : -w;
+      const x1 = side > 0 ? w : -w + len;
+      slab(x0, x1, y, Math.min(y + 0.38, H - 0.4), 0.04, false);
+    }
   }
 }
 
