@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { attribute } from 'three/tsl';
 import { GeoBuilder } from './geo';
-import { TREE, type Lamp, type StringLight } from './layout';
+import type { Lamp, StringLight } from './layout';
 import { createRng } from '../core/rng';
 import { glowMaterial, propMaterial } from '../render/materials';
 
@@ -12,8 +12,11 @@ const ARM = 0.75;
 
 /** World position of a lamp's lantern (where its light comes from). */
 export function lanternPosition(l: Lamp): THREE.Vector3 {
-  return new THREE.Vector3(l.x + Math.sin(l.rot) * ARM, LAMP_HEIGHT - 0.35, l.z + Math.cos(l.rot) * ARM);
+  return new THREE.Vector3(l.x + Math.sin(l.rot) * ARM, l.y + LAMP_HEIGHT - 0.35, l.z + Math.cos(l.rot) * ARM);
 }
+
+/** The Place d'Armes tree. */
+export const TREE_SIZE = { height: 13, radius: 4.2 };
 
 /** Street lamps: one instanced iron mesh + one instanced glowing lantern mesh. */
 export function buildLamps(lamps: readonly Lamp[]): THREE.Group {
@@ -34,7 +37,7 @@ export function buildLamps(lamps: readonly Lamp[]): THREE.Group {
   );
   const m = new THREE.Matrix4();
   lamps.forEach((l, i) => {
-    m.makeRotationY(l.rot).setPosition(l.x, 0, l.z);
+    m.makeRotationY(l.rot).setPosition(l.x, l.y, l.z);
     posts.setMatrixAt(i, m);
     const p = lanternPosition(l);
     glass.setMatrixAt(i, new THREE.Matrix4().makeRotationY(l.rot).setPosition(p.x, p.y, p.z));
@@ -47,7 +50,7 @@ export function buildLamps(lamps: readonly Lamp[]): THREE.Group {
 }
 
 /** Catenary string lights + the tree's bulbs, all in one instanced bulb mesh. */
-export function buildLights(strings: readonly StringLight[]): THREE.Group {
+export function buildLights(strings: readonly StringLight[], tree: { x: number; y: number; z: number }): THREE.Group {
   const rng = createRng('bulbs');
   const bulbs: { p: THREE.Vector3; c: THREE.Color }[] = [];
   const wire: number[] = [];
@@ -63,9 +66,8 @@ export function buildLights(strings: readonly StringLight[]): THREE.Group {
   for (const s of strings) {
     const len = Math.hypot(s.bx - s.ax, s.bz - s.az);
     const n = Math.max(4, Math.round(len / 0.55));
-    const isTree = s.ax === TREE.x && s.az === TREE.z;
-    const yA = isTree ? TREE.height - 0.5 : s.y;
-    const yB = isTree ? 3.6 : s.y;
+    const yA = s.ay;
+    const yB = s.by;
     let prev: THREE.Vector3 | null = null;
     for (let i = 0; i <= n; i++) {
       const t = i / n;
@@ -85,10 +87,10 @@ export function buildLights(strings: readonly StringLight[]): THREE.Group {
   const count = 170;
   for (let i = 0; i < count; i++) {
     const t = i / count;
-    const y = 1.3 + t * (TREE.height - 2.2);
-    const r = TREE.radius * (1 - (y - 0.8) / TREE.height) + 0.15;
+    const y = 1.3 + t * (TREE_SIZE.height - 2.2);
+    const r = TREE_SIZE.radius * (1 - (y - 0.8) / TREE_SIZE.height) + 0.15;
     const a = t * turns * Math.PI * 2;
-    bulbs.push({ p: new THREE.Vector3(TREE.x + Math.cos(a) * r, y, TREE.z + Math.sin(a) * r), c: bulbColor() });
+    bulbs.push({ p: new THREE.Vector3(tree.x + Math.cos(a) * r, tree.y + y, tree.z + Math.sin(a) * r), c: bulbColor() });
   }
 
   const geo = new THREE.IcosahedronGeometry(0.075, 0);
@@ -114,10 +116,11 @@ export function buildLights(strings: readonly StringLight[]): THREE.Group {
 }
 
 /** The square's Christmas tree: stacked snowy cones, trunk, star. */
-export function buildTree(): THREE.Group {
+export function buildTree(at: { x: number; y: number; z: number }): THREE.Group {
+  const TREE = { ...TREE_SIZE, ...at };
   const g = new GeoBuilder();
   const tiers = 6;
-  g.merge(new THREE.CylinderGeometry(0.35, 0.45, 1.6, 8), new THREE.Matrix4().makeTranslation(TREE.x, 0.8, TREE.z), [0.16, 0.1, 0.07]);
+  g.merge(new THREE.CylinderGeometry(0.35, 0.45, 1.6, 8), new THREE.Matrix4().makeTranslation(TREE.x, TREE.y + 0.8, TREE.z), [0.16, 0.1, 0.07]);
   for (let i = 0; i < tiers; i++) {
     const t = i / tiers;
     const r = TREE.radius * (1 - t * 0.82);
@@ -134,14 +137,14 @@ export function buildTree(): THREE.Group {
       col.set([0.03 + snow * 0.72, 0.09 + snow * 0.72, 0.05 + snow * 0.84], v * 3);
     }
     cone.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    g.merge(cone, new THREE.Matrix4().makeRotationY(i * 0.7).setPosition(TREE.x, y + h / 2, TREE.z), [1, 1, 1]);
+    g.merge(cone, new THREE.Matrix4().makeRotationY(i * 0.7).setPosition(TREE.x, TREE.y + y + h / 2, TREE.z), [1, 1, 1]);
   }
   const geo = g.build();
   const tree = new THREE.Mesh(geo, propMaterial(0.8));
   tree.name = 'tree';
 
   const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.55, 0), glowMaterial(new THREE.Color(1.0, 0.8, 0.45), 10));
-  star.position.set(TREE.x, TREE.height + 0.4, TREE.z);
+  star.position.set(TREE.x, TREE.y + TREE.height + 0.4, TREE.z);
   star.scale.set(1, 1.3, 0.35);
   star.name = 'star';
 

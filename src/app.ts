@@ -46,7 +46,7 @@ const FIXED_DT = 1 / 60;
 
 export class App {
   readonly scene = new THREE.Scene();
-  readonly camera = new THREE.PerspectiveCamera(56, 1, 0.1, 400);
+  readonly camera = new THREE.PerspectiveCamera(56, 1, 0.1, 900);
   readonly game: Game;
   readonly van: VanPhysics;
   readonly input = new Input();
@@ -236,7 +236,7 @@ export class App {
     this.zone.progress.value = this.game.handover.progress;
 
     if (!this.presetName) this.chase.update(dt || FIXED_DT, this.tmpV, this.van.heading, this.van.speed);
-    this.world.update(this.game.clock.progress, this.presetName ? this.camera.position : this.tmpV, this.quality.settings.lampLights);
+    this.world.update(this.game.clock.progress, this.presetName ? this.camera.position : this.tmpV, this.quality.settings.lampLights, this.camera.position, this.quality.settings.cullDistance);
   }
 
   private applyQuality(): void {

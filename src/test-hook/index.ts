@@ -1,13 +1,17 @@
 import type { App } from '../app';
 import { CAMERA_PRESETS, type CameraPresetName } from '../render/cameraPresets';
+import { NavGraph } from '../world/navgraph';
 
 /**
  * window.__game, only installed with ?test. The simulation does not advance on
  * real time in test mode (unless &live): tests drive it with step(dt).
  */
 export function installTestHook(app: App): void {
+  let graph: NavGraph | null = null;
   const api = {
     ready: true,
+    /** The App itself, for ad-hoc debugging from Playwright. Not a stable API. */
+    app,
     get state() {
       const g = app.game;
       const p = app.van.body.translation();
@@ -46,6 +50,12 @@ export function installTestHook(app: App): void {
       return api.state;
     },
     teleport: (x: number, z: number, heading = Math.PI) => app.teleport(x, z, heading),
+    /** Street route from the van to (x, z), as waypoints. Null if unreachable. */
+    route: (x: number, z: number) => {
+      graph ??= new NavGraph();
+      const p = app.van.body.translation();
+      return graph.path(p.x, p.z, x, z)?.map((n) => ({ x: n.x, y: n.y, z: n.z })) ?? null;
+    },
     setSeed: (seed: string) => app.restart(seed),
     deliver: (id?: string) => app.game.deliver(id ?? app.game.targetId ?? ''),
     setCameraPreset: (name: CameraPresetName | null) => app.setCameraPreset(name),

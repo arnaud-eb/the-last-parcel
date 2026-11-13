@@ -12,12 +12,14 @@ export type TierSettings = {
   shadows: boolean;
   /** Analytic lamp lights evaluated per fragment on facades/ground. */
   lampLights: number;
+  /** Scenery chunks beyond this distance (m) are hidden; the fog has swallowed them anyway. */
+  cullDistance: number;
 };
 
 export const TIERS: Record<Tier, TierSettings> = {
-  high: { maxPixelRatio: 2, snowCount: 40000, bloom: true, grain: true, shadows: false, lampLights: 16 },
-  medium: { maxPixelRatio: 1.5, snowCount: 20000, bloom: true, grain: true, shadows: false, lampLights: 10 },
-  fast: { maxPixelRatio: 1, snowCount: 8000, bloom: false, grain: false, shadows: false, lampLights: 6 },
+  high: { maxPixelRatio: 2, snowCount: 40000, bloom: true, grain: true, shadows: false, lampLights: 16, cullDistance: 300 },
+  medium: { maxPixelRatio: 1.5, snowCount: 20000, bloom: true, grain: true, shadows: false, lampLights: 10, cullDistance: 240 },
+  fast: { maxPixelRatio: 1, snowCount: 8000, bloom: false, grain: false, shadows: false, lampLights: 6, cullDistance: 170 },
 };
 
 const ORDER: Tier[] = ['high', 'medium', 'fast'];

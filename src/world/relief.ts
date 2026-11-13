@@ -4,6 +4,7 @@ import { facadeCols, facadeSlots } from './facade';
 import type { Building } from './layout';
 import { lampLight, U } from '../render/materials';
 import { hashString } from '../core/rng';
+import { byChunk } from './chunks';
 
 type N = any;
 
@@ -89,17 +90,38 @@ function dormerGlassMaterial(): THREE.MeshBasicNodeMaterial {
  * snow on every ledge, shutters, door steps, shop awnings, roof dormers.
  */
 export function buildRelief(buildings: readonly Building[]): THREE.Group {
-  const box = new THREE.BoxGeometry(1, 1, 1);
-  const lintel = new Parts('relief-lintels', box);
-  const jamb = new Parts('relief-jambs', box);
-  const sill = new Parts('relief-sills', box);
-  const snow = new Parts('relief-snow', box);
-  const shutter = new Parts('relief-shutters', box);
-  const doorStep = new Parts('relief-steps', box);
-  const awning = new Parts('relief-awnings', box);
-  const dormer = new Parts('relief-dormers', box);
-  const dormerRoof = new Parts('relief-dormer-roofs', prismGeometry());
-  const glass = new Parts('relief-dormer-glass', new THREE.PlaneGeometry(1, 1));
+  const group = new THREE.Group();
+  group.name = 'facade-relief';
+  for (const [key, list] of byChunk(buildings.filter((b) => b.relief), (b) => b)) {
+    for (const mesh of reliefChunk(list)) {
+      mesh.name = `${mesh.name} ${key}`;
+      group.add(mesh);
+    }
+  }
+  return group;
+}
+
+const BOX = new THREE.BoxGeometry(1, 1, 1);
+const PRISM = prismGeometry();
+const PLANE = new THREE.PlaneGeometry(1, 1);
+const MAT = reliefMaterial();
+const AWNING_MAT = awningMaterial();
+const GLASS_MAT = dormerGlassMaterial();
+
+/** One chunk's relief: one instanced mesh of boxes (all trim shares a material), plus prisms, awnings, glass. */
+function reliefChunk(buildings: readonly Building[]): THREE.InstancedMesh[] {
+  // All box-shaped trim goes into one instanced mesh; the names below are just for readability.
+  const boxes = new Parts('relief', BOX);
+  const lintel = boxes;
+  const jamb = boxes;
+  const sill = boxes;
+  const snow = boxes;
+  const shutter = boxes;
+  const doorStep = boxes;
+  const dormer = boxes;
+  const awning = new Parts('relief-awnings', BOX);
+  const dormerRoof = new Parts('relief-dormer-roofs', PRISM);
+  const glass = new Parts('relief-dormer-glass', PLANE);
 
   const local = new THREE.Matrix4();
   const tmp = new THREE.Matrix4();
@@ -107,8 +129,7 @@ export function buildRelief(buildings: readonly Building[]): THREE.Group {
   const e = new THREE.Euler();
 
   for (const b of buildings) {
-    if (!b.relief) continue;
-    const world = new THREE.Matrix4().makeRotationY(b.rot).setPosition(b.x, 0, b.z);
+    const world = new THREE.Matrix4().makeRotationY(b.rot).setPosition(b.x, b.y, b.z);
     const w = b.width / 2;
     const d = b.depth / 2;
     const zWall = -d - PROUD;
@@ -193,16 +214,7 @@ export function buildRelief(buildings: readonly Building[]): THREE.Group {
     }
   }
 
-  const mat = reliefMaterial();
-  const group = new THREE.Group();
-  group.name = 'facade-relief';
-  for (const p of [lintel, jamb, sill, snow, shutter, doorStep, dormer, dormerRoof]) {
-    const mesh = p.build(mat);
-    if (mesh) group.add(mesh);
-  }
-  const aw = awning.build(awningMaterial());
-  if (aw) group.add(aw);
-  const g = glass.build(dormerGlassMaterial());
-  if (g) group.add(g);
-  return group;
+  return [boxes.build(MAT), awning.build(AWNING_MAT), dormerRoof.build(MAT), glass.build(GLASS_MAT)].filter(
+    (m): m is THREE.InstancedMesh => m !== null,
+  );
 }

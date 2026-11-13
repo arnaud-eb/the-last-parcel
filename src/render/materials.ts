@@ -276,9 +276,11 @@ export function snowMaterial(): THREE.MeshStandardNodeMaterial {
 /**
  * Wet cobblestones with slushy snow toward the curbs.
  * uv: x = lateral metres from the centreline, y = metres along the street.
+ * Vertex colour .r = half-width / 10 (squares use a huge value: no curb snow).
  */
-export function cobbleMaterial(roadHalf: number): THREE.MeshStandardNodeMaterial {
+export function cobbleMaterial(): THREE.MeshStandardNodeMaterial {
   const m = new THREE.MeshStandardNodeMaterial();
+  const roadHalf = (vertexColor() as N).r.mul(10);
   const lat = (uv() as N).x;
   const along = (uv() as N).y;
   const P = positionWorld;
@@ -297,7 +299,7 @@ export function cobbleMaterial(roadHalf: number): THREE.MeshStandardNodeMaterial
   // Snow: piled near the curbs, packed between the tyre lanes, broken by noise.
   const n = mx_noise_float(P.xz.mul(0.45)).mul(0.5).add(0.5);
   const n2 = mx_noise_float(P.xz.mul(2.2)).mul(0.5).add(0.5);
-  const edge = smoothstep(roadHalf - 1.6, roadHalf - 0.2, abs(lat));
+  const edge = smoothstep(roadHalf.sub(1.6), roadHalf.sub(0.2), abs(lat));
   const middle = smoothstep(0.9, 0.0, abs(lat)).mul(0.6);
   const snowAmt = clamp(edge.add(middle).add(n.sub(0.55).mul(0.9)).add(float(1).sub(stone).mul(0.25)), 0, 1).mul(n2.mul(0.35).add(0.75));
   const slush = mix(vec3(0.3, 0.33, 0.4), SNOW_ALBEDO, smoothstep(0.4, 0.9, snowAmt));

@@ -32,6 +32,11 @@ export class GeoBuilder {
     return this.vertexCount - 1;
   }
 
+  /** Raw triangle indices (for vertices added with vertex()). */
+  indices(...ids: number[]): void {
+    this.idx.push(...ids);
+  }
+
   /** Quad a,b,c,d counter-clockwise seen from the front, normal computed. */
   quad(
     a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3,

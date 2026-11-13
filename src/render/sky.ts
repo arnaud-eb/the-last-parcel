@@ -56,7 +56,7 @@ export function setupSky(scene: THREE.Scene): { update(progress: number): void }
       U.progress.value = progress;
       U.horizon.value.copy(horizonColor(progress));
       // Visibility drops toward 6pm as snowfall rises.
-      U.fogDensity.value = 0.0065 + progress * 0.009;
+      U.fogDensity.value = 0.005 + progress * 0.008;
       // Ambient light dims as the sky goes dark.
       hemi.intensity = 0.55 - progress * 0.3;
       moon.intensity = 0.35 - progress * 0.18;

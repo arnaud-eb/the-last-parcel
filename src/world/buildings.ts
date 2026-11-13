@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { GeoBuilder } from './geo';
-import type { Building, Spire } from './layout';
+import type { Building } from './layout';
+import { byChunk } from './chunks';
 import { GROUND_FLOOR_H } from './facade';
 import { facadeMaterial, roofMaterial } from '../render/materials';
 
@@ -9,28 +10,37 @@ const OVERHANG = 0.35;
 const SLATE = [0.08, 0.085, 0.1];
 const FASCIA = [0.13, 0.085, 0.06];
 const BRICK = [0.4, 0.22, 0.17];
-const STONE = [0.42, 0.42, 0.44];
-const COPPER = [0.14, 0.22, 0.2];
 
-/** All buildings as two merged meshes: walls (facade material) and roofs (snowy roof material). */
-export function buildBuildings(buildings: readonly Building[], spires: readonly Spire[]): THREE.Group {
-  const walls = new GeoBuilder([['aWall', 4], ['aFacade', 4]]);
-  const roofs = new GeoBuilder([['aRoof', 1]]);
-  for (const b of buildings) addBuilding(walls, roofs, b);
-  for (const s of spires) addSpire(walls, roofs, s);
+/** New builders for walls (facade material) and roofs (snowy roof material). */
+export function wallBuilders(): { walls: GeoBuilder; roofs: GeoBuilder } {
+  return { walls: new GeoBuilder([['aWall', 4], ['aFacade', 4]]), roofs: new GeoBuilder([['aRoof', 1]]) };
+}
 
+const FACADE = facadeMaterial();
+const ROOF = roofMaterial();
+
+/** Turn wall/roof builders into meshes with the shared facade and roof materials. */
+export function wallMeshes(walls: GeoBuilder, roofs: GeoBuilder, name: string): THREE.Mesh[] {
+  const out: THREE.Mesh[] = [];
+  if (walls.vertexCount) out.push(Object.assign(new THREE.Mesh(walls.build(), FACADE), { name: `${name}-walls` }));
+  if (roofs.vertexCount) out.push(Object.assign(new THREE.Mesh(roofs.build(), ROOF), { name: `${name}-roofs` }));
+  return out;
+}
+
+/** All buildings, merged per map chunk: two draw calls (walls, roofs) per visible chunk. */
+export function buildBuildings(buildings: readonly Building[]): THREE.Group {
   const group = new THREE.Group();
   group.name = 'buildings';
-  const wallMesh = new THREE.Mesh(walls.build(), facadeMaterial());
-  const roofMesh = new THREE.Mesh(roofs.build(), roofMaterial());
-  wallMesh.name = 'walls';
-  roofMesh.name = 'roofs';
-  group.add(wallMesh, roofMesh);
+  for (const [key, list] of byChunk(buildings, (b) => b)) {
+    const { walls, roofs } = wallBuilders();
+    for (const b of list) addBuilding(walls, roofs, b);
+    group.add(...wallMeshes(walls, roofs, `chunk ${key}`));
+  }
   return group;
 }
 
-function addBuilding(walls: GeoBuilder, roofs: GeoBuilder, b: Building): void {
-  const m = new THREE.Matrix4().makeRotationY(b.rot).setPosition(b.x, 0, b.z);
+export function addBuilding(walls: GeoBuilder, roofs: GeoBuilder, b: Building): void {
+  const m = new THREE.Matrix4().makeRotationY(b.rot).setPosition(b.x, b.y, b.z);
   const P = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z).applyMatrix4(m);
   const w = b.width / 2;
   const d = b.depth / 2;
@@ -44,7 +54,7 @@ function addBuilding(walls: GeoBuilder, roofs: GeoBuilder, b: Building): void {
     const [bx, bz] = corners[(i + 1) % 4]!;
     const len = Math.hypot(bx - ax, bz - az);
     const isFront = i === 0;
-    const kind = isFront || b.solid ? 0 : 1;
+    const kind = b.plain ? 1 : isFront || b.solid ? 0 : 1;
     // aFacade = (shop, doorCol, shutters, relief). Only the front has a door, shop and 3D relief.
     const facade = isFront ? [b.shop ? 1 : 0, b.doorCol, b.shutters, b.relief ? 1 : 0] : [0, -1, b.shutters, 0];
     wallQuad(walls, P(ax, 0, az), P(bx, 0, bz), H, len, col, [len, H, b.seed + i * 0.13, i === 2 ? 1 : kind, ...facade]);
@@ -95,11 +105,11 @@ function stoneBands(walls: GeoBuilder, roofs: GeoBuilder, P: (x: number, y: numb
   slab(-w - 0.05, w + 0.05, H - 0.38, H - 0.02, 0.24, false); // cornice (under the eaves)
   // Quoins: alternating long/short blocks up both corners.
   for (const side of [-1, 1]) {
-    for (let y = 0.55, i = 0; y < H - 0.45; y += 0.42, i++) {
-      const len = i % 2 ? 0.32 : 0.5;
+    for (let y = 0.55, i = 0; y < H - 0.45; y += 0.62, i++) {
+      const len = i % 2 ? 0.34 : 0.56;
       const x0 = side > 0 ? w - len : -w;
       const x1 = side > 0 ? w : -w + len;
-      slab(x0, x1, y, Math.min(y + 0.38, H - 0.4), 0.04, false);
+      slab(x0, x1, y, Math.min(y + 0.56, H - 0.4), 0.04, false);
     }
   }
 }
@@ -114,7 +124,7 @@ function wallQuad(g: GeoBuilder, a: THREE.Vector3, b: THREE.Vector3, H: number, 
  * Gable roof over a w×d footprint (half extents). If `acrossX`, the ridge runs
  * along local Z (gable faces the street); otherwise along local X.
  */
-function gableRoof(
+export function gableRoof(
   walls: GeoBuilder,
   roofs: GeoBuilder,
   P: (x: number, y: number, z: number) => THREE.Vector3,
@@ -172,7 +182,7 @@ function gableRoof(
 }
 
 /** Axis-aligned (in local frame) box with plain walls and a snow cap. */
-function box(
+export function box(
   walls: GeoBuilder,
   roofs: GeoBuilder,
   P: (x: number, y: number, z: number) => THREE.Vector3,
@@ -198,20 +208,4 @@ function box(
   const t = y1 + 0.12;
   const e = 0.06;
   roofs.quad(P(cx - hx - e, t, cz - hz - e), P(cx - hx - e, t, cz + hz + e), P(cx + hx + e, t, cz + hz + e), P(cx + hx + e, t, cz - hz - e), [0, 1, 0, 1, 0, 1, 0, 1], SLATE, [2], UP);
-}
-
-function addSpire(walls: GeoBuilder, roofs: GeoBuilder, s: Spire): void {
-  const m = new THREE.Matrix4().makeTranslation(s.x, 0, s.z);
-  const P = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z).applyMatrix4(m);
-  const hw = s.width / 2;
-  const towerTop = s.height * 0.55;
-  box(walls, roofs, P, 0, 0, hw, hw, 0, towerTop, STONE, 0.5);
-  // Slender four-sided needle.
-  const apex = P(0, s.height, 0);
-  const cs: [number, number][] = [[hw, -hw], [-hw, -hw], [-hw, hw], [hw, hw]];
-  for (let i = 0; i < 4; i++) {
-    const [ax, az] = cs[i]!;
-    const [bx, bz] = cs[(i + 1) % 4]!;
-    roofs.tri(P(ax, towerTop, az), P(bx, towerTop, bz), apex, [0, 0, 1, 0, 0.5, 1], COPPER, [1]);
-  }
 }
