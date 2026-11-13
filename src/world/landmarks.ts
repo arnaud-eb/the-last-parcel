@@ -10,7 +10,7 @@ import { box, wallBuilders, wallMeshes } from './buildings';
 import type { Landmark } from './town';
 import { U, fogFactor, lampLight } from '../render/materials';
 import { buildTree } from './props';
-import { landmarkBuildings, lm } from './landmarkBlocks';
+import { GARE_TOWER, landmarkBuildings, lm } from './landmarkBlocks';
 
 type N = any;
 type Rgb = [number, number, number];
@@ -18,8 +18,6 @@ type Rgb = [number, number, number];
 const SANDSTONE: Rgb = [0.66, 0.56, 0.4];
 const GREY_STONE: Rgb = [0.6, 0.58, 0.54];
 const PALE: Rgb = [0.72, 0.62, 0.46];
-/** Floodlit stone reads much brighter than the walls around it, so the tower is darker. */
-const TOWER: Rgb = [0.5, 0.42, 0.3];
 const CREAM: Rgb = [0.9, 0.86, 0.74];
 const SLATE: Rgb = [0.09, 0.095, 0.11];
 const COPPER: Rgb = [0.16, 0.36, 0.3];
@@ -162,30 +160,19 @@ export function buildLandmarkExtras(): THREE.Group {
     }
   }
 
-  // --- Hôtel de Ville: wide front staircase up to a columned portico, two green bronze lions, chimneys, lanterns.
+  // --- Hôtel de Ville: wide front steps, two green bronze lions, roof balustrade and flag, chimneys, lanterns.
   {
     const l = lm('hotelDeVille');
     const { P, M } = frame(l);
     const b = landmarkBuildings().find((x) => x.x === l.x && x.z === l.z)!;
     const d = b.depth / 2;
     const H = b.height;
-    // Portico: six tall columns two floors high, entablature and a balustraded terrace on top.
-    const pd = 3.2; // depth of the portico in front of the wall
+    // Wide front steps straight up to the doors (no portico: the real facade is flat).
+    const pd = 0;
     for (let i = 0; i < 4; i++) {
-      const out = pd + (4 - i) * 0.45;
-      box(stone.walls, stone.roofs, P, 0, -d - out / 2, 11 - i * 0.3, out / 2, 0, 0.15 * (i + 1), CREAM, 0.21);
+      const out = (4 - i) * 0.45;
+      box(stone.walls, stone.roofs, P, 0, -d - out / 2, 9 - i * 0.3, out / 2, 0, 0.15 * (i + 1), CREAM, 0.21);
     }
-    for (let i = 0; i < 6; i++) {
-      const x = -8.75 + i * 3.5;
-      column(stone.walls, P, x, -d - pd + 0.6, 0.55, 0.6, 9.4, 10, CREAM);
-      box(stone.walls, stone.roofs, P, x, -d - pd + 0.6, 0.75, 0.75, 0.6, 1.1, CREAM, 0.21); // base
-      box(stone.walls, stone.roofs, P, x, -d - pd + 0.6, 0.8, 0.8, 9.2, 9.6, CREAM, 0.21); // capital
-    }
-    box(stone.walls, stone.roofs, P, 0, -d - pd / 2 + 0.1, 10.2, pd / 2 + 0.2, 9.6, 11, CREAM, 0.21); // entablature
-    for (let x = -9.8; x <= 9.8; x += 0.7) box(stone.walls, stone.roofs, P, x, -d - pd + 0.25, 0.1, 0.1, 11, 11.9, CREAM, 0.21); // balusters
-    box(stone.walls, stone.roofs, P, 0, -d - pd + 0.25, 10.2, 0.18, 11.9, 12.15, CREAM, 0.21); // rail
-    // Warm light inside the portico, behind the columns.
-    glows.add(M(0, 4.6, -d - 0.04, Math.PI, [14, 8, 1]), [0.5, 0.3, 0.12]);
     // Balustrade and flagpole along the roof line.
     box(stone.walls, stone.roofs, P, 0, -d - 0.1, b.width / 2, 0.2, H, H + 0.9, CREAM, 0.21);
     box(props, props, P, 0, -d + 1, 0.06, 0.06, H, H + 7, IRON, 0.21);
@@ -201,36 +188,35 @@ export function buildLandmarkExtras(): THREE.Group {
     for (let x = -15; x <= 15; x += 6) if (Math.abs(x) > 10) glows.add(M(x, 2.8, -d - 0.25, Math.PI, [0.35, 0.5, 1]), [3, 1.6, 0.6]);
   }
 
-  // --- Gare: a tall clock tower on the east front corner with a floodlit copper cupola,
-  // end pavilions with steep copper roofs, and the big arched glass window of the hall.
+  // --- Gare: copper cupola and lit clock faces on the stone tower, the arched glass of the hall, lit doors.
   {
     const l = lm('gare');
     const { P, M } = frame(l);
-    const b = landmarkBuildings().find((x) => x.x === l.x && x.z === l.z)!;
-    const w = b.width / 2;
-    const d = b.depth / 2;
-    const H = b.height;
-    const tx = 18;
-    const tz = -d + 2.4;
-    column(flood, P, tx, tz, 4.6, 0, 40, 4, TOWER);
-    box(flood, flood, P, tx, tz, 3.7, 3.7, 40, 41.2, TOWER, 0.83); // cornice
-    column(flood, P, tx, tz, 3.6, 41.2, 46, 8, COPPER);
-    column(flood, P, tx, tz, 2.7, 46, 50, 8, COPPER);
-    column(flood, P, tx, tz, 1.5, 50, 53, 8, COPPER);
-    needle(flood, P, tx, tz, 1.6, 53, 60, 8, COPPER);
+    const t = GARE_TOWER;
+    const top = t.height;
+    box(stone.walls, stone.roofs, P, t.x, t.z, t.half + 0.35, t.half + 0.35, top - 0.2, top + 0.9, PALE, 0.83); // cornice
+    column(flood, P, t.x, t.z, 3.9, top + 0.9, top + 6, 8, COPPER);
+    column(flood, P, t.x, t.z, 2.9, top + 6, top + 10, 8, COPPER);
+    column(flood, P, t.x, t.z, 1.6, top + 10, top + 13, 8, COPPER);
+    needle(flood, P, t.x, t.z, 1.7, top + 13, top + 20, 8, COPPER);
     for (let side = 0; side < 4; side++) {
       const a = (side * Math.PI) / 2;
-      glows.add(M(tx + Math.sin(a) * 3.28, 35, tz + Math.cos(a) * 3.28, a, [3.4, 3.4, 1]), [2.6, 2.3, 1.7]);
+      const r = t.half + 0.03;
+      glows.add(M(t.x + Math.sin(a) * r, top - 5, t.z + Math.cos(a) * r, a, [3.6, 3.6, 1]), [2.6, 2.3, 1.7]);
+      // A slit window lower down each face.
+      glows.add(M(t.x + Math.sin(a) * r, top - 15, t.z + Math.cos(a) * r, a, [0.9, 3.2, 1]), [1.4, 0.8, 0.35]);
     }
-    // End pavilions, a little proud of the front, with tall copper roofs.
-    for (const s of [-1, 1]) {
-      const px = s * (w - 4);
-      box(flood, flood, P, px, -0.6, 4.6, d + 0.6, 0, H + 3, PALE, 0.83);
-      needle(flood, P, px, -0.6, 6.4, H + 3, H + 10, 4, COPPER);
+    // Hall front: tall arched window in a stone surround (stepped glass for the arch), lit doors below.
+    const fz = -10.6 - 0.06; // hall front (depth 20.6, centred 0.3 forward)
+    box(stone.walls, stone.roofs, P, 0, fz + 0.2, 6.2, 0.3, 4.2, 4.6, PALE, 0.9); // sill
+    for (let i = 0; i < 6; i++) {
+      const hw = 5 * Math.sqrt(1 - (i / 6) ** 2);
+      glows.add(M(0, 13.2 + i * 0.75, fz, Math.PI, [hw * 2, 0.8, 1]), [1.8, 1.2, 0.55]);
     }
-    // Arched glass gable of the hall, full height, warm.
-    glows.add(M(-6, 7.5, -d - 0.04, Math.PI, [14, 11, 1]), [1.9, 1.25, 0.6]);
-    for (const x of [-20, 6]) glows.add(M(x, 2.2, -d - 0.04, Math.PI, [4.5, 3.6, 1]), [2.2, 1.5, 0.7]); // doors
+    glows.add(M(0, 8.8, fz, Math.PI, [10, 8.8, 1]), [1.8, 1.2, 0.55]);
+    for (let x = -3.75; x <= 3.75; x += 2.5) box(props, props, P, x, fz - 0.05, 0.12, 0.05, 4.6, 18, IRON, 0.9); // mullions
+    box(props, props, P, 0, fz - 0.05, 5, 0.05, 8.7, 8.95, IRON, 0.9); // transom
+    for (const x of [-4, 0, 4]) glows.add(M(x, 1.7, fz, Math.PI, [2.4, 3.2, 1]), [2.2, 1.5, 0.7]);
   }
 
   // --- Gëlle Fra: tall obelisk on a pedestal, the golden figure on top.
@@ -280,9 +266,9 @@ class FerrisWheel {
   private readonly rotor = new THREE.Group();
   private readonly gondolas: THREE.InstancedMesh;
   private readonly m = new THREE.Matrix4();
-  static readonly R = 9;
-  static readonly HUB = 11;
-  static readonly CARS = 16;
+  static readonly R = 15;
+  static readonly HUB = 18; // top at ~33 m, well above the Gëlle Fra (~24 m)
+  static readonly CARS = 20;
   /** Radians per second: one turn in about a minute and a half. */
   static readonly SPEED = 0.07;
 
@@ -293,12 +279,12 @@ class FerrisWheel {
     this.group.rotation.y = l.rot;
     this.group.name = 'ferris-wheel';
 
-    const legs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.3, 1), new THREE.MeshStandardNodeMaterial({ color: 0x1a1d24, roughness: 0.6 }), 4);
+    const legs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.45, 0.45, 1), new THREE.MeshStandardNodeMaterial({ color: 0x1a1d24, roughness: 0.6 }), 4);
     let i = 0;
     for (const s of [-1, 1]) {
       for (const k of [-1, 1]) {
-        const foot = v3(s * 1.4, -HUB, k * 5);
-        const top = v3(s * 1.4, 0, 0);
+        const foot = v3(s * 2, -HUB, k * 8);
+        const top = v3(s * 2, 0, 0);
         const len = foot.distanceTo(top);
         const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(foot, top, v3(0, 1, 0)));
         legs.setMatrixAt(i++, new THREE.Matrix4().compose(foot.clone().add(top).multiplyScalar(0.5), q, v3(1, 1, len)));
@@ -306,17 +292,17 @@ class FerrisWheel {
     }
     legs.name = 'ferris-legs';
 
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.12, 6, 64), new THREE.MeshStandardNodeMaterial({ color: 0xd8d2c4, roughness: 0.5 }));
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(R, 0.2, 6, 96), new THREE.MeshStandardNodeMaterial({ color: 0xd8d2c4, roughness: 0.5 }));
     ring.rotation.y = Math.PI / 2;
     const bulbs = new Glows();
-    const n = 64;
+    const n = 96;
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2;
       bulbs.add(new THREE.Matrix4().compose(v3(0, Math.sin(a) * R, Math.cos(a) * R), new THREE.Quaternion(), v3(0.34, 0.34, 0.34)), k % 4 === 0 ? [3.4, 0.6, 0.35] : [3.6, 2.3, 1.0]);
     }
     for (let k = 0; k < CARS; k++) {
       const a = (k / CARS) * Math.PI * 2;
-      for (let j = 1; j < 6; j++) bulbs.add(new THREE.Matrix4().compose(v3(0, Math.sin(a) * R * (j / 6), Math.cos(a) * R * (j / 6)), new THREE.Quaternion(), v3(0.18, 0.18, 0.18)), [2.8, 1.8, 0.8]);
+      for (let j = 1; j < 8; j++) bulbs.add(new THREE.Matrix4().compose(v3(0, Math.sin(a) * R * (j / 8), Math.cos(a) * R * (j / 8)), new THREE.Quaternion(), v3(0.18, 0.18, 0.18)), [2.8, 1.8, 0.8]);
     }
     // Glow quads face local +Z; turn them to face out along the axle (±X) so they read from the square.
     const bulbMesh = bulbs.build(new THREE.PlaneGeometry(1, 1).rotateY(Math.PI / 2), 'ferris-bulbs');
@@ -326,7 +312,7 @@ class FerrisWheel {
     const car = new THREE.MeshStandardNodeMaterial({ roughness: 0.6 });
     car.colorNode = vec3(0.5, 0.08, 0.06);
     car.emissiveNode = vec3(0.16, 0.05, 0.02); // lit cabins
-    this.gondolas = new THREE.InstancedMesh(new THREE.BoxGeometry(1.0, 1.2, 1.2), car, CARS);
+    this.gondolas = new THREE.InstancedMesh(new THREE.BoxGeometry(1.5, 1.7, 1.7), car, CARS);
     this.gondolas.name = 'ferris-cars';
     this.gondolas.frustumCulled = false; // it moves; its bounds are the whole wheel anyway
 
@@ -341,7 +327,7 @@ class FerrisWheel {
     for (let k = 0; k < CARS; k++) {
       const a = (k / CARS) * Math.PI * 2 + turn;
       // Hang below the rim point, level whatever the rotor angle.
-      this.m.makeTranslation(0, Math.sin(a) * R - 1.0, Math.cos(a) * R);
+      this.m.makeTranslation(0, Math.sin(a) * R - 1.3, Math.cos(a) * R);
       this.gondolas.setMatrixAt(k, this.m);
     }
     this.gondolas.instanceMatrix.needsUpdate = true;

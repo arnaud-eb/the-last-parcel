@@ -29,11 +29,30 @@ export function landmarkBuildings(): Building[] {
     building(lm('cathedral'), { width: 24, depth: 52, height: 15, color: SANDSTONE, ridgeAlong: false, roofPitch: 1.1, plain: true, relief: false }),
     // Five tall floors under a steep slate roof: a head above the old-town houses around it.
     building(lm('palais'), { width: 36, depth: 16, height: 18.6, color: SANDSTONE, roofPitch: 1.2, dormers: 2, seed: 0.62 }),
-    // Wide and pale, four floors behind a columned portico (landmarks.ts).
+    // Wide and pale, four floors, front steps and lions (landmarks.ts).
     building(lm('hotelDeVille'), { width: 38, depth: 16, height: 15.6, color: CREAM, roofPitch: 0.35, seed: 0.21 }),
-    // Long pale station with green copper roofs, end pavilions and the clock tower (landmarks.ts).
-    building(lm('gare'), { width: 60, depth: 20, height: 15.6, color: PALE_STONE, roofPitch: 0.6, dormers: 2, seed: 0.83, roofColor: COPPER_ROOF }),
+    ...gareBlocks(),
     building(lm('neumunster'), { width: 42, depth: 11, height: 9.6, color: GREY_STONE, roofPitch: 0.95, seed: 0.47, dormers: 2, floodlit: false }),
+  ];
+}
+
+/** Gare clock tower, in the station's local frame (front faces local -Z). Shared with landmarks.ts. */
+export const GARE_TOWER = { x: 17.5, z: -8, half: 4, height: 40 };
+
+/**
+ * The station, 60 m long: tall end pavilions with steep copper roofs, two wings,
+ * a central hall with a big arched window (glass added in landmarks.ts), and the
+ * plain stone clock tower standing proud of the front near the east end.
+ */
+function gareBlocks(): Building[] {
+  const l = lm('gare');
+  const at = (dx: number, dz: number, o: Parameters<typeof building>[1]): Building => ({ ...building(l, o), ...toWorld(l, dx, dz) });
+  const base = { color: PALE_STONE, roofColor: COPPER_ROOF };
+  return [
+    ...[-1, 1].map((s, i) => at(s * 25.5, -0.5, { ...base, width: 9, depth: 21, height: 19.6, ridgeAlong: false, roofPitch: 1.3, seed: 0.81 + i * 0.05 })),
+    ...[-1, 1].map((s, i) => at(s * 14.5, 0, { ...base, width: 13, depth: 20, height: 15.6, roofPitch: 0.6, dormers: 2, seed: 0.71 + i * 0.05 })),
+    at(0, -0.3, { ...base, width: 16, depth: 20.6, height: 19.6, ridgeAlong: false, roofPitch: 0.55, plain: true, relief: false, seed: 0.9 }),
+    at(GARE_TOWER.x, GARE_TOWER.z, { ...base, width: GARE_TOWER.half * 2, depth: GARE_TOWER.half * 2, height: GARE_TOWER.height, roofPitch: 0.05, plain: true, relief: false, seed: 0.93 }),
   ];
 }
 
@@ -52,24 +71,20 @@ function toWorld(l: Landmark, x: number, z: number): { x: number; z: number } {
   return { x: l.x + x * c + z * s, z: l.z - x * s + z * c };
 }
 
-/** Extra colliders for pieces outside the main blocks (monument, wheel, tree, portico, tower). */
+/** Extra colliders for pieces outside the main blocks (monument, wheel, tree, lions). */
 export function landmarkColliders(): { x: number; y: number; z: number; radius: number; height: number }[] {
   const g = lm('gelleFra');
   const w = lm('ferrisWheel');
   const t = lm('tree');
   const out = [
     { x: g.x, y: g.y, z: g.z, radius: 2.2, height: 22 },
-    { x: w.x, y: w.y, z: w.z, radius: 3, height: 20 },
+    { x: w.x, y: w.y, z: w.z, radius: 3, height: 34 },
     { x: t.x, y: t.y, z: t.z, radius: 2.4, height: 6 },
   ];
-  // Hôtel de Ville portico columns and lion plinths, out in Place Guillaume II (see landmarks.ts).
+  // Hôtel de Ville lion plinths, out in Place Guillaume II (see landmarks.ts).
   const h = lm('hotelDeVille');
   const d = 8;
-  const pd = 3.2;
-  for (let i = 0; i < 6; i++) out.push({ ...toWorld(h, -8.75 + i * 3.5, -d - pd + 0.6), y: h.y, radius: 0.75, height: 10 });
+  const pd = 0;
   for (const s of [-1, 1]) out.push({ ...toWorld(h, s * 12.5, -d - pd - 1.6), y: h.y, radius: 1.5, height: 3 });
-  // Gare clock tower, standing slightly proud of the front.
-  const gare = lm('gare');
-  out.push({ ...toWorld(gare, 18, -10 + 2.4), y: gare.y, radius: 3.4, height: 40 });
   return out;
 }
