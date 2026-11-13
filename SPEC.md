@@ -1,6 +1,6 @@
 # The Last Parcel
 
-A 3D browser driving game. It is December 23, 4pm, in Luxembourg's old town. You drive the last courier van of the year. Everything must be delivered before the 6pm cutoff, and you can't make every stop.
+A 3D browser driving game. It is December 24, 4pm, in Luxembourg's old town. You drive the last courier van of the year. Every present must arrive before Christmas Eve dinner, the 6pm cutoff, and you can't make every stop.
 
 Phone first. Plays in the browser, no install. Launch target: **December 16, 2026**.
 
@@ -80,7 +80,38 @@ Zones to include, as stylised set pieces:
 - **Switchback climbs** linking upper and lower town, cobbled and steep.
 - **A high bridge** across the valley, iced over and windy.
 - **Casemate cliffs** lit from below.
-- **The depot** at the edge of town, where the shift starts.
+- **The depot** at the edge of town by the Gare, where the shift starts.
+
+### Real landmarks and geography
+
+The layout is hand-authored, not GIS, but it keeps the **real geography and the real route between landmarks**: the upper town on its plateau, the Pétrusse valley to the south (crossed by Pont Adolphe) and the Alzette valley with Grund to the east, cliffs between them. Streets are simplified and shortened so they're fun to drive, but their order and the landmarks along them are real, so a local can find their way.
+
+**The spine (in driving order):**
+
+1. **Gare (Luxembourg station)**: the far end of Avenue de la Liberté. The **depot** sits here, where the shift starts.
+2. **Avenue de la Liberté** → **Pont Adolphe**, the high bridge over the Pétrusse valley: iced over and windy.
+3. **Boulevard Franklin Delano Roosevelt** → **Place de la Constitution**: the **Gëlle Fra** (Golden Lady) and the **Ferris wheel**, with a view back over the valley to Pont Adolphe. The **Cathédrale Notre-Dame** stands beside it.
+4. **Place Guillaume II ("Knuedler")** with the **Hôtel de Ville**, between Place de la Constitution and Place d'Armes. Market stalls.
+5. **Rue Chimay** → **Place d'Armes**: the Christmas market and the big tree.
+6. **Rue du Curé**: the **Palais Grand-Ducal** on the right at the corner of **Rue du Marché-aux-Herbes**, which runs between Rue du Curé and Rue de la Boucherie.
+7. **Rue de la Boucherie** → **Bock casemates** and the **Corniche** along the cliff edge above Grund (the postcard shot).
+8. **Switchbacks** down the cliff → **Grund** on the valley floor → **Rue Münster** → **Neumünster Abbey** by the river, in low fog.
+
+Loops and side streets are added around this spine for route choices, closures and stops. The spine itself stays.
+
+**Landmark looks** (from reference photos; silhouette and colour first, ornament as painted shader detail):
+
+| Landmark | What makes it recognisable |
+|---|---|
+| **Cathédrale Notre-Dame** | Three spires: two tall, slender **dark-slate needles** and one **green copper** spire over the crossing, plus a large dark slate hipped roof on honey sandstone. **The spires must be visible from almost everywhere in town**, like the Golden Gate Bridge in San Francisco: the player's compass. They sit above the fog line and catch light at night. |
+| **Palais Grand-Ducal** | Flemish Renaissance. Honey sandstone with carved diamond and arabesque panels; steep **dark slate roof** with **pointed turret spires**, dormers with iron finials; **corner oriel towers**; a long first-floor **balcony with iron railing on stone corbels**; a **blue arched door** with **two blue sentry boxes**; chained bollards along the front. |
+| **Hôtel de Ville** | Neoclassical, symmetrical, about seven bays. **Cream plaster with honey sandstone quoins** and a heavy cornice; low slate roof with two chimneys; **triangular pediments over the tall ground-floor French doors**; window boxes with red flowers; wall lanterns; **two green bronze lions on plinths** flanking a **wide front staircase**; flags over the door. At night the ground floor glows warm. |
+| **Gare** | **Clock tower with a green copper baroque cupola**, sandstone hall, dark slate mansard roof with round dormers, a big **arched glass gable window**. Floodlit at night: the tower is a beacon down Avenue de la Liberté. |
+| **Gëlle Fra** | Golden figure holding a wreath, on a tall stone obelisk. Lit gold at night. |
+| **Pont Adolphe** | Stone arch bridge over a deep wooded valley. |
+| **Neumünster Abbey** | Long low stone abbey buildings by the river in Grund. |
+
+Street names on addresses are real (Grand-Rue, Rue du Marché-aux-Herbes, Rue de la Boucherie, Rue Chimay, Rue Münster…); house numbers are fictional.
 
 Local flavour through text, not voice:
 
@@ -102,6 +133,7 @@ Target: **a warm, toy-like miniature town at blue hour, turning to night.** Styl
 - **Lights:** window glow, string lights across streets, market stall bulbs, van headlights cutting through the snow, the Ferris wheel.
 - **Atmosphere:** height fog filling the valley, steam rising from market stalls, breath-like exhaust from the van.
 - **Surfaces:** wet cobblestones with soft reflections of the lights.
+- **Facade relief:** walls are not flat. Recessed windows with sills and frames that stick out, door steps and stoops, dormers and chimneys on roofs, oriel (bay) windows, shop awnings and signs, balconies. All instanced, so the whole town adds only a handful of draw calls.
 - **Post-processing:** bloom, filmic tone mapping (AgX), colour grading, vignette, light film grain, mild depth of field on the far valley.
 - **All assets procedural:** geometry built in code, textures drawn to canvases or generated in shaders. Same approach as Trick or Clawd: no downloads, tiny bundle, consistent style.
 
@@ -203,12 +235,15 @@ CLAUDE.md
 - **Checkpoint:** screenshots + runs at 60 fps on a phone. Agree the look before going on.
 
 ### M2: Town and core loop (Nov 20 to Nov 26)
+- Facade relief pass on the M1 street first (see §4), so the look is settled before the town is built
+- Real geography and landmark placement (§3): the spine from the Gare depot to Neumünster Abbey, landmarks as blocking volumes in their real positions, cathedral spires visible from every street
 - Full town layout: upper town, Corniche, switchbacks, Grund, bridge, depot
 - Parcel generation from seed, all five parcel types, delivery zones, stop picker, minimap
 - Scoring, tally screen, ranks
 - **Checkpoint:** a full 5-minute shift is playable start to finish.
 
 ### M3: Visual pass (Nov 27 to Dec 3)
+- Detailed landmark models: Cathédrale Notre-Dame, Palais Grand-Ducal, Hôtel de Ville, Gare, Gëlle Fra, Pont Adolphe, Neumünster Abbey
 - Snow accumulation and tyre tracks, wet cobblestone reflections
 - Christmas markets: stalls, string lights, tree, Ferris wheel, steam, crowds
 - Valley fog, casemate lighting, sky and lights changing over the shift

@@ -52,7 +52,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
     const offEv = app.on((e: AppEvent) => {
       if (e.type === 'started') {
         const n = app.game.parcels.length;
-        toast(`Moien! ${n} parcel${n === 1 ? '' : 's'} today. Merci and good luck.`, 'Dispatch', 4500);
+        toast(`Moien! ${n} parcel${n === 1 ? '' : 's'} left. Last run before Christmas Eve dinner. Merci and good luck.`, 'Dispatch', 4500);
       } else if (e.type === 'delivered') {
         navigator.vibrate?.(60);
         toast(`${THANKS[Math.floor(Math.random() * THANKS.length)]}  +${e.parcel.value}`, e.parcel.stop.address);
@@ -119,9 +119,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       {hud.phase === 'ready' && !app.opts.test && (
         <div class="overlay" onPointerDown={() => app.start()}>
           <div class="panel card">
-            <p>December 23 · 4:00pm · Luxembourg</p>
+            <p>December 24 · 4:00pm · Luxembourg</p>
             <h1>The Last Parcel</h1>
-            <p>The last Kuerier van of the year. Deliver before the 6pm cutoff.</p>
+            <p>The last Kuerier van of the year. Every present must arrive before Christmas Eve dinner at 6pm.</p>
             <button class="btn" onClick={() => app.start()}>Start shift</button>
           </div>
         </div>
@@ -132,7 +132,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
           <div class="panel card" data-testid="end-card">
             <h2>{hud.parcelsLeft === 0 ? 'All delivered!' : '6pm. Shift over.'}</h2>
             <div class="big">{hud.score}</div>
-            <p>{hud.parcelsLeft === 0 ? `Done at ${hud.clock}, before the cutoff.` : `${hud.parcelsLeft} parcel${hud.parcelsLeft === 1 ? '' : 's'} won't arrive before Christmas.`}</p>
+            <p>{hud.parcelsLeft === 0 ? `Done at ${hud.clock}, before the cutoff.` : `${hud.parcelsLeft} parcel${hud.parcelsLeft === 1 ? '' : 's'} won't be under the tree tonight.`}</p>
             <p><b>Schéi Chrëschtdeeg!</b></p>
             <button class="btn" onClick={() => { app.restart(); app.start(); }}>Drive again</button>
           </div>
