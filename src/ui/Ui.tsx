@@ -56,6 +56,8 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       } else if (e.type === 'delivered') {
         navigator.vibrate?.(60);
         toast(`${THANKS[Math.floor(Math.random() * THANKS.length)]}  +${e.parcel.value}`, e.parcel.stop.address);
+      } else if (e.type === 'recovered') {
+        toast(e.auto ? 'Back on the road. Careful on the ice!' : 'Back on the road.', undefined, 2200);
       } else if (e.type === 'hit') {
         navigator.vibrate?.(Math.min(80, 20 + e.strength * 6));
       }
@@ -80,6 +82,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
         <div class="stats">
           <div class="panel stat"><b data-testid="parcels">{hud.parcelsLeft}</b><span>parcels</span></div>
           <div class="panel stat"><b data-testid="score">{hud.score}</b><span>score</span></div>
+          {hud.phase === 'driving' && (
+            <button class="panel reset" data-testid="reset" aria-label="Put the van back on the road" title="Back on the road (R)" onClick={() => app.recover()}>↺</button>
+          )}
         </div>
       </div>
 
@@ -114,7 +119,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       </div>
 
       <TouchControls app={app} />
-      {hud.phase === 'driving' && <div class="panel keys-hint">WASD / arrows to drive · Space to brake · stop in the glowing ring</div>}
+      {hud.phase === 'driving' && <div class="panel keys-hint">WASD / arrows to drive · Space to brake · R if stuck · stop in the glowing ring</div>}
 
       {hud.phase === 'ready' && !app.opts.test && (
         <div class="overlay" onPointerDown={() => app.start()}>

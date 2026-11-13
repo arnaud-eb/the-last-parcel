@@ -10,9 +10,11 @@ export class Input {
   /** Set by the touch UI. */
   touch = { steer: 0, gas: false, brake: false };
   readonly value: DriveInput = { steer: 0, throttle: 0, brake: 0 };
+  private recoverPressed = false;
   private readonly onKey = (e: KeyboardEvent, down: boolean) => {
     const k = e.code;
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(k)) e.preventDefault();
+    if (down && k === 'KeyR' && !e.repeat) this.recoverPressed = true;
     if (down) this.keys.add(k);
     else this.keys.delete(k);
   };
@@ -30,6 +32,13 @@ export class Input {
     target.removeEventListener('keydown', this.down);
     target.removeEventListener('keyup', this.up);
     target.removeEventListener('blur', this.blur);
+  }
+
+  /** True once per press of the reset key (R). */
+  takeRecover(): boolean {
+    const r = this.recoverPressed;
+    this.recoverPressed = false;
+    return r;
   }
 
   /** Any input activity this frame (used to start the shift). */

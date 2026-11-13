@@ -56,7 +56,8 @@ export function addBuilding(walls: GeoBuilder, roofs: GeoBuilder, b: Building): 
     const isFront = i === 0;
     const kind = b.plain ? 1 : isFront || b.solid ? 0 : 1;
     // aFacade = (shop, doorCol, shutters, relief). Only the front has a door, shop and 3D relief.
-    const facade = isFront ? [b.shop ? 1 : 0, b.doorCol, b.shutters, b.relief ? 1 : 0] : [0, -1, b.shutters, 0];
+    const lit = b.floodlit ? 2 : 0;
+    const facade = isFront ? [b.shop ? 1 : 0, b.doorCol, b.shutters, (b.relief ? 1 : 0) + lit] : [0, -1, b.shutters, lit];
     wallQuad(walls, P(ax, 0, az), P(bx, 0, bz), H, len, col, [len, H, b.seed + i * 0.13, i === 2 ? 1 : kind, ...facade]);
   }
 
@@ -65,10 +66,10 @@ export function addBuilding(walls: GeoBuilder, roofs: GeoBuilder, b: Building): 
   // Roof.
   if (b.ridgeAlong) {
     const rise = b.roofPitch * d;
-    gableRoof(walls, roofs, P, w, d, H, rise, col, b.seed, false);
+    gableRoof(walls, roofs, P, w, d, H, rise, col, b.seed, false, b.roofColor);
   } else {
     const rise = b.roofPitch * w;
-    gableRoof(walls, roofs, P, w, d, H, rise, col, b.seed, true);
+    gableRoof(walls, roofs, P, w, d, H, rise, col, b.seed, true, b.roofColor);
   }
 
   if (b.chimney) {
@@ -135,6 +136,7 @@ export function gableRoof(
   col: readonly number[],
   seed: number,
   acrossX: boolean,
+  roofCol: readonly number[] = SLATE,
 ): void {
   const o = OVERHANG;
   // Work in a frame where the ridge runs along "a" (half-length A) and slopes span "b" (half-width B).
@@ -155,7 +157,7 @@ export function gableRoof(
     const len = 2 * (A + o);
     const s0 = map(-(A + o), eaveY + 0.16, s * (B + o));
     const s1 = map(A + o, eaveY + 0.16, s * (B + o));
-    roofs.quad(s0, s1, r1, r0, [0, 0, len, 0, len, slopeLen, 0, slopeLen], SLATE, [0], UP);
+    roofs.quad(s0, s1, r1, r0, [0, 0, len, 0, len, slopeLen, 0, slopeLen], roofCol, [0], UP);
 
     // Snow lip and dark fascia along the eave, facing outward.
     const out = map(0, 0, s).sub(map(0, 0, 0));
@@ -164,7 +166,7 @@ export function gableRoof(
     const l0 = map(-(A + o), eaveY + 0.16, s * (B + o));
     const l1 = map(A + o, eaveY + 0.16, s * (B + o));
     roofs.quad(f0, f1, e1, e0, [0, 0, len, 0, len, 1, 0, 1], FASCIA, [1], out);
-    roofs.quad(e0, e1, l1, l0, [0, 0, len, 0, len, 1, 0, 1], SLATE, [2], out);
+    roofs.quad(e0, e1, l1, l0, [0, 0, len, 0, len, 1, 0, 1], roofCol, [2], out);
   }
 
   // Gable triangles (plain plaster) at both ends of the ridge.

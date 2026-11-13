@@ -103,3 +103,26 @@ export function inPlaza(x: number, z: number, margin = 0): Plaza | null {
   }
   return null;
 }
+
+/**
+ * Where to put a stuck van: the nearest point on a road centreline, preferring
+ * roads at the van's own level (so a van off the switchbacks goes back to its
+ * own leg), facing along the road in the direction closest to its heading.
+ */
+export function recoveryPoint(x: number, y: number, z: number, heading: number): { x: number; y: number; z: number; heading: number } {
+  let best: { cost: number; x: number; y: number; z: number; seg: Segment } | null = null;
+  for (const g of SEGMENTS) {
+    const dx = g.bx - g.ax;
+    const dz = g.bz - g.az;
+    const t = Math.max(0, Math.min(1, ((x - g.ax) * dx + (z - g.az) * dz) / (dx * dx + dz * dz)));
+    const px = g.ax + dx * t;
+    const pz = g.az + dz * t;
+    const py = g.ay + (g.by - g.ay) * t;
+    const cost = Math.hypot(x - px, z - pz, (y - py) * 0.7);
+    if (!best || cost < best.cost) best = { cost, x: px, y: py, z: pz, seg: g };
+  }
+  const g = best!.seg;
+  let h = Math.atan2(g.bx - g.ax, g.bz - g.az);
+  if (Math.cos(h - heading) < 0) h += Math.PI;
+  return { x: best!.x, y: best!.y, z: best!.z, heading: Math.atan2(Math.sin(h), Math.cos(h)) };
+}

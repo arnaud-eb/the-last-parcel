@@ -147,8 +147,21 @@ export class VanPhysics {
     }));
   }
 
-  teleport(x: number, z: number, heading: number): void {
-    this.body.setTranslation({ x, y: 1.0, z }, true);
+  /** World-up component of the van's up axis: 1 upright, 0 on its side, -1 on its roof. */
+  get upY(): number {
+    const q = this.body.rotation();
+    return 1 - 2 * (q.x * q.x + q.z * q.z);
+  }
+
+  wheelsOnGround(): number {
+    let n = 0;
+    for (let i = 0; i < 4; i++) if (this.vehicle.wheelIsInContact(i)) n++;
+    return n;
+  }
+
+  /** Place the van upright at (x, z), `groundY` being the road or terrain height there. */
+  teleport(x: number, z: number, heading: number, groundY = 0): void {
+    this.body.setTranslation({ x, y: groundY + 1.0, z }, true);
     this.body.setRotation({ x: 0, y: Math.sin(heading / 2), z: 0, w: Math.cos(heading / 2) }, true);
     this.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
     this.body.setAngvel({ x: 0, y: 0, z: 0 }, true);

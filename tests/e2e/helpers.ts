@@ -8,7 +8,7 @@ export type GameApi = {
     parcelsLeft: number;
     clock: string;
     elapsed: number;
-    van: { x: number; y: number; z: number; heading: number; speed: number };
+    van: { x: number; y: number; z: number; heading: number; speed: number; upY: number };
     backend: string;
     drawCalls: number;
     triangles: number;
@@ -18,6 +18,9 @@ export type GameApi = {
   restart(seed?: string): void;
   step(dt: number, input?: { steer?: number; throttle?: number; brake?: number }): GameApi['state'];
   teleport(x: number, z: number, heading?: number): void;
+  recover(): void;
+  overturn(): void;
+  app: { on(cb: (e: { type: string }) => void): () => void };
   route(x: number, z: number): { x: number; y: number; z: number }[] | null;
   setSeed(seed: string): void;
   deliver(id?: string): void;

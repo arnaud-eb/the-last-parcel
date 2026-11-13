@@ -20,12 +20,16 @@ export class WorldView {
   /** Chunk-sized meshes hidden beyond the fog (landmarks are exempt so the spires stay visible). */
   private readonly cullable: { obj: THREE.Object3D; center: THREE.Vector3; radius: number }[] = [];
 
+  /** Moving set pieces (the Ferris wheel), driven by scene time in seconds. */
+  readonly animateLandmarks: (time: number) => void;
+
   constructor(readonly scene: THREE.Scene) {
     this.layout = buildLayout();
     scene.add(buildStreet());
     scene.add(buildBuildings(this.layout.buildings));
     scene.add(buildRelief(this.layout.buildings));
     const landmarks = buildLandmarkExtras();
+    this.animateLandmarks = landmarks.userData.update as (time: number) => void;
     scene.add(landmarks);
     scene.add(buildLamps(this.layout.lamps));
     scene.add(buildLights(this.layout.strings, lm('tree')));

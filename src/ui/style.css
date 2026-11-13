@@ -72,6 +72,11 @@ html, body {
 .stat { padding: 8px 14px; text-align: center; min-width: 76px; }
 .stat b { display: block; font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .stat span { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: 1px; }
+.reset {
+  width: 48px; height: 48px; padding: 0; border-radius: 14px;
+  color: var(--ink); font: 700 24px/1 var(--font); cursor: pointer;
+}
+.reset:active { transform: scale(0.94); filter: brightness(1.4); }
 
 .target-card {
   position: absolute;
@@ -268,6 +273,7 @@ html, body {
   .stat { padding: 5px 9px; min-width: 54px; border-radius: 12px; }
   .stat b { font-size: 17px; }
   .stat span { font-size: 9px; letter-spacing: 0.5px; }
+  .reset { width: 40px; height: 40px; font-size: 20px; border-radius: 12px; }
   .target-card { font-size: 12px; padding: 4px 10px; border-radius: 12px; }
   .toasts { top: auto; bottom: calc(14px + var(--sab)); width: min(46vw, 360px); }
   .toast { font-size: 12px; padding: 6px 10px; border-radius: 12px; }

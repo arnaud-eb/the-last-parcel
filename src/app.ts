@@ -12,6 +12,9 @@ import { DeliveryZoneView } from './render/deliveryZone';
 import { CAMERA_PRESETS, type CameraPresetName } from './render/cameraPresets';
 import { loadRapier, type Rapier } from './vehicle/rapier';
 import { VanPhysics } from './vehicle/van';
+import { RecoveryWatch } from './vehicle/recovery';
+import { nearestRoad, recoveryPoint } from './world/roads';
+import { terrainHeight } from './world/terrain';
 import { VanMesh } from './vehicle/vanMesh';
 import { buildColliders } from './world/colliders';
 import { Input } from './ui/input';
@@ -26,7 +29,7 @@ export type AppOptions = {
   isMobile: boolean;
 };
 
-export type AppEvent = GameEvent | { type: 'hit'; strength: number };
+export type AppEvent = GameEvent | { type: 'hit'; strength: number } | { type: 'recovered'; auto: boolean };
 
 /** What the HUD needs each frame. */
 export type HudSnapshot = {
@@ -57,6 +60,7 @@ export class App {
   private readonly vanMesh = new VanMesh();
   private readonly zone = new DeliveryZoneView();
   private readonly chase: ChaseCamera;
+  private readonly recovery = new RecoveryWatch();
   private snow: Snow;
   private post: THREE.RenderPipeline;
   private listeners: ((e: AppEvent) => void)[] = [];
@@ -64,6 +68,8 @@ export class App {
   private acc = 0;
   private last = -1;
   private fps = 60;
+  /** Time for ambient animation (Ferris wheel). Frozen in paused test mode so screenshots repeat. */
+  private sceneTime = 0;
   private simPaused: boolean;
   private readonly tmpV = new THREE.Vector3();
   private readonly tmpQ = new THREE.Quaternion();
@@ -138,12 +144,27 @@ export class App {
     const s = this.world.layout.start;
     this.van.teleport(s.x, s.z, s.heading);
     this.chase.reset();
+    this.recovery.reset();
   }
 
   teleport(x: number, z: number, heading: number): void {
-    this.van.teleport(x, z, heading);
+    // On (or over) a road use the road surface, so the bridge deck wins over the valley below.
+    const n = nearestRoad(x, z);
+    const ground = n && n.dist < n.seg.road.halfWidth + 1 ? n.y : terrainHeight(x, z);
+    this.van.teleport(x, z, heading, ground);
     for (let i = 0; i < 20; i++) this.stepPhysics(FIXED_DT, true);
     this.chase.reset();
+    this.recovery.reset();
+  }
+
+  /** Put a stuck or overturned van back on the nearest road, upright, facing its way. */
+  recover(auto = false): void {
+    const p = this.van.body.translation();
+    const r = recoveryPoint(p.x, p.y, p.z, this.van.heading);
+    this.van.teleport(r.x, r.z, r.heading, r.y);
+    this.chase.reset();
+    this.recovery.reset();
+    this.emit([{ type: 'recovered', auto }]);
   }
 
   setCameraPreset(name: CameraPresetName | null): void {
@@ -184,6 +205,10 @@ export class App {
     this.van.afterStep();
     if (settleOnly) return;
     if (this.van.impact > 3) this.emit([{ type: 'hit', strength: this.van.impact }]);
+    if (this.game.phase === 'driving' && this.recovery.update(dt, { upY: this.van.upY, speed: this.van.speed, wheelsOnGround: this.van.wheelsOnGround() })) {
+      this.recover(true);
+      return;
+    }
     const p = this.van.body.translation();
     this.emit(this.game.update(dt, { x: p.x, z: p.z, speed: this.van.speed }));
   }
@@ -198,6 +223,7 @@ export class App {
     if (change) this.applyQuality();
 
     this.input.update(dt);
+    if (this.input.takeRecover() && this.game.phase === 'driving') this.recover();
     if (this.game.phase === 'ready' && this.input.active && !this.opts.test) this.start();
 
     if (!this.simPaused) {
@@ -211,6 +237,8 @@ export class App {
       if (n === 5) this.acc = 0;
     }
 
+    if (!this.simPaused) this.sceneTime += dt;
+    this.world.animateLandmarks(this.sceneTime);
     this.syncVisuals(dt);
     U.time.value = t;
     this.snow.step(this.renderer, dt, this.game.clock.progress);

@@ -24,6 +24,7 @@ import {
   length,
   max,
   mix,
+  mod,
   mx_noise_float,
   normalWorld,
   normalize,
@@ -137,7 +138,9 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
   const aFacade = attribute('aFacade', 'vec4') as N;
   const isShop = aFacade.x;
   const isDoor = ground.mul(step(abs(cx.sub(aFacade.y)), 0.5));
-  const relief = aFacade.w;
+  // w = relief (0/1) + 2 × floodlit (landmarks lit warm from below).
+  const relief = mod(aFacade.w, 2);
+  const flood = step(1.5, aFacade.w);
   const painted = float(1).sub(relief); // frames/sills/shutters are 3D on relief walls
   const hasShutters = step(0, aFacade.z).mul(painted);
 
@@ -229,7 +232,9 @@ export function facadeMaterial(): THREE.MeshStandardNodeMaterial {
   m.colorNode = albedo;
   m.roughnessNode = mix(float(0.92), float(0.35), win);
   m.metalnessNode = float(0);
-  m.emissiveNode = glow.add(lampLight(P, normalWorld, albedo, win.mul(1.5).add(0.04), float(24)));
+  // Floodlights: warm uplight on the stone, strongest at street level, none on the glass.
+  const floodLight = albedo.mul(vec3(1.0, 0.84, 0.58)).mul(smoothstep(34, 0, P.y).mul(0.4).add(0.2)).mul(flood.mul(float(1).sub(win)));
+  m.emissiveNode = glow.add(floodLight).add(lampLight(P, normalWorld, albedo, win.mul(1.5).add(0.04), float(24)));
   return m;
 }
 

@@ -52,6 +52,45 @@ test('the switchbacks down to Grund are drivable', async ({ page }) => {
   expect(r.van.y).toBeLessThan(-30);
 });
 
+test('an overturned van off the road is put back on it, upright', async ({ page }) => {
+  await openGame(page);
+  const s = await page.evaluate(() => {
+    const g = window.__game;
+    g.start();
+    const events: string[] = [];
+    g.app.on((e) => events.push(e.type));
+    // On the wooded slope between two legs of the switchbacks, off the road.
+    g.teleport(247, 10, 0);
+    g.overturn();
+    g.step(0.5);
+    const tipped = g.state.van.upY;
+    // It tumbles down the slope first, then sits on its side until the watch kicks in.
+    g.step(7);
+    return { tipped, after: g.state.van, path: g.route(300, 0), events };
+  });
+  expect(s.tipped).toBeLessThan(0);
+  expect(s.after.upY).toBeGreaterThan(0.95);
+  // Back on a street the bot can drive on from here.
+  expect(s.path).not.toBeNull();
+  expect(s.events).toContain('recovered');
+});
+
+test('the reset button / R key puts the van back on the road', async ({ page }, info) => {
+  await openGame(page);
+  await page.evaluate(() => {
+    window.__game.start();
+    window.__game.teleport(247, 10, 0);
+  });
+  const before = await page.evaluate(() => window.__game.state.van);
+  if (info.project.name === 'phone') await page.getByTestId('reset').tap();
+  else await page.keyboard.press('KeyR');
+  await frames(page, 3); // the key is read on the next rendered frame
+  await page.evaluate(() => window.__game.step(0.5));
+  const after = await page.evaluate(() => window.__game.state.van);
+  expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeGreaterThan(2);
+  expect(after.upY).toBeGreaterThan(0.95);
+});
+
 test('the shift ends at 6pm with the parcel undelivered', async ({ page }) => {
   await openGame(page);
   const s = await page.evaluate(() => {

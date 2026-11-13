@@ -10,7 +10,7 @@ import { facadeCols, facadeSlots, FLOOR_H, GROUND_FLOOR_H } from './facade';
 import { SIDEWALK, frameAt, inPlaza, onRoad, roadLength, type Frame } from './roads';
 import { baseHeight } from './terrain';
 import { LANDMARKS, PLAZAS, ROADS, START, VALLEY_Y, type District, type Landmark, type Plaza } from './town';
-import { landmarkBuildings } from './landmarkBlocks';
+import { LANDMARK_SKYLINE, landmarkBuildings } from './landmarkBlocks';
 
 export { GROUND_FLOOR_H, FLOOR_H } from './facade';
 export { CURB_HEIGHT, SIDEWALK } from './roads';
@@ -46,6 +46,10 @@ export type Building = {
   street: string | null;
   /** Plain stone walls, no windows (the cathedral). */
   plain?: boolean;
+  /** Warm floodlights on the walls (landmarks). */
+  floodlit?: boolean;
+  /** Roof colour under the snow; slate when unset. */
+  roofColor?: [number, number, number];
 };
 
 export type Lamp = { x: number; y: number; z: number; /** direction the arm points */ rot: number };
@@ -271,7 +275,7 @@ export function buildLayout(): Layout {
     }
   }
 
-  const buildings = [...placer.buildings.map((b, i) => decorate(b, placer.districts[i]!)), ...landmarkBuildings()];
+  const buildings = [...placer.buildings.map((b, i) => capNearLandmarks(decorate(b, placer.districts[i]!))), ...landmarkBuildings()];
   return {
     buildings,
     lamps: buildLamps(),
@@ -365,4 +369,12 @@ function buildStops(buildings: Building[]): Stop[] {
     });
   }
   return stops;
+}
+
+/** Keep generated neighbours a floor or two below the big landmarks, so those dominate their streets. */
+function capNearLandmarks(b: Building): Building {
+  for (const c of LANDMARK_SKYLINE) {
+    if (Math.hypot(b.x - c.x, b.z - c.z) < c.radius && b.height > c.maxHeight) b.height = c.maxHeight;
+  }
+  return b;
 }

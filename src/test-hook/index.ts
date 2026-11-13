@@ -22,7 +22,7 @@ export function installTestHook(app: App): void {
         parcelsLeft: g.parcelsLeft,
         clock: g.clock.format(),
         elapsed: g.clock.elapsed,
-        van: { x: p.x, y: p.y, z: p.z, heading: app.van.heading, speed: app.van.speed },
+        van: { x: p.x, y: p.y, z: p.z, heading: app.van.heading, speed: app.van.speed, upY: app.van.upY },
         backend: app.backend,
         tier: app.quality.tier,
         drawCalls: app.renderer.info.render.drawCalls,
@@ -34,7 +34,7 @@ export function installTestHook(app: App): void {
     },
     get van() {
       const p = app.van.body.translation();
-      return { x: p.x, y: p.y, z: p.z, heading: app.van.heading, speed: app.van.speed };
+      return { x: p.x, y: p.y, z: p.z, heading: app.van.heading, speed: app.van.speed, upY: app.van.upY };
     },
     get parcels() {
       return app.game.parcels.map((p) => ({ id: p.id, address: p.stop.address, zone: p.stop.zone, value: p.value, delivered: p.delivered }));
@@ -50,6 +50,16 @@ export function installTestHook(app: App): void {
       return api.state;
     },
     teleport: (x: number, z: number, heading = Math.PI) => app.teleport(x, z, heading),
+    recover: () => app.recover(),
+    /** Roll the van onto its roof where it stands (to test recovery). */
+    overturn: () => {
+      const b = app.van.body;
+      const p = b.translation();
+      const h = app.van.heading;
+      // Yaw by heading, then roll 180° about the van's forward (+Z) axis.
+      b.setTranslation({ x: p.x, y: p.y + 1.5, z: p.z }, true);
+      b.setRotation({ x: Math.sin(h / 2), y: 0, z: Math.cos(h / 2), w: 0 }, true);
+    },
     /** Street route from the van to (x, z), as waypoints. Null if unreachable. */
     route: (x: number, z: number) => {
       graph ??= new NavGraph();
