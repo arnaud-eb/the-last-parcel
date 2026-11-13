@@ -11,10 +11,12 @@ export class Input {
   touch = { steer: 0, gas: false, brake: false };
   readonly value: DriveInput = { steer: 0, throttle: 0, brake: 0 };
   private recoverPressed = false;
+  private cyclePressed = false;
   private readonly onKey = (e: KeyboardEvent, down: boolean) => {
     const k = e.code;
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(k)) e.preventDefault();
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'].includes(k)) e.preventDefault();
     if (down && k === 'KeyR' && !e.repeat) this.recoverPressed = true;
+    if (down && (k === 'Tab' || k === 'KeyE') && !e.repeat) this.cyclePressed = true;
     if (down) this.keys.add(k);
     else this.keys.delete(k);
   };
@@ -38,6 +40,13 @@ export class Input {
   takeRecover(): boolean {
     const r = this.recoverPressed;
     this.recoverPressed = false;
+    return r;
+  }
+
+  /** True once per press of the next-stop key (Tab or E). */
+  takeCycle(): boolean {
+    const r = this.cyclePressed;
+    this.cyclePressed = false;
     return r;
   }
 

@@ -23,10 +23,13 @@ test('the clock does not run on real time in test mode, and step() advances it',
   await expect(page.getByTestId('clock')).toHaveText('4:10pm');
 });
 
-test('a bot can drive the streets from the depot to the delivery and complete it', async ({ page }) => {
+test('a bot can drive the streets from the depot to the first stop and hand the parcel over', async ({ page }) => {
   await openGame(page);
   await page.evaluate(() => window.__game.start());
-  const zone = await page.evaluate(() => window.__game.parcels[0]!.zone);
+  const { zone, id, total } = await page.evaluate(() => {
+    const g = window.__game;
+    return { zone: g.parcels.find((p) => p.id === g.targetId)!.zone, id: g.targetId, total: g.parcels.length };
+  });
   const r = await driveTo(page, zone.x, zone.z, { radius: zone.radius - 1 });
   expect(r.waypoints).toBeGreaterThan(2);
   expect(r.reached, `van ended at ${JSON.stringify(r.van)}`).toBe(true);
@@ -34,9 +37,12 @@ test('a bot can drive the streets from the depot to the delivery and complete it
   expect(r.stalls, r.stallsAt.join('; ')).toBe(0);
   expect(r.seconds).toBeLessThan(150);
   const s = await page.evaluate(() => window.__game.state);
-  expect(s.parcelsLeft).toBe(0);
+  expect(s.parcelsLeft).toBe(total - 1);
   expect(s.score).toBeGreaterThan(0);
-  await expect(page.getByTestId('end-card')).toContainText('All delivered');
+  expect(await page.evaluate((id) => window.__game.parcels.find((p) => p.id === id)!.delivered, id)).toBe(true);
+  // The next nearest stop becomes the target.
+  expect(s.targetId).not.toBe(id);
+  await expect(page.getByTestId('score')).toHaveText(String(s.score));
 });
 
 test('the switchbacks down to Grund are drivable', async ({ page }) => {
@@ -91,7 +97,7 @@ test('the reset button / R key puts the van back on the road', async ({ page }, 
   expect(after.upY).toBeGreaterThan(0.95);
 });
 
-test('the shift ends at 6pm with the parcel undelivered', async ({ page }) => {
+test('the shift ends at 6pm with parcels undelivered, on the tally screen', async ({ page }) => {
   await openGame(page);
   const s = await page.evaluate(() => {
     window.__game.start();
@@ -99,8 +105,78 @@ test('the shift ends at 6pm with the parcel undelivered', async ({ page }) => {
   });
   expect(s.phase).toBe('ended');
   expect(s.clock).toBe('6:00pm');
-  expect(s.parcelsLeft).toBe(1);
+  expect(s.parcelsLeft).toBeGreaterThanOrEqual(14);
   await expect(page.getByTestId('end-card')).toContainText('Shift over');
+  await expect(page.getByTestId('rank')).toHaveText('Missed the Sleigh');
+  await expect(page.getByTestId('final-score')).toHaveText('0');
+});
+
+test('a full shift: deliveries of every type, a crash, then the tally and rank at 6pm', async ({ page }) => {
+  await openGame(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.start();
+    const types = new Set(g.parcels.map((p) => p.type));
+    const load0 = g.loadKg;
+    // Hand over parcels one by one at their doors, the way a driver would: stop in the ring and wait.
+    let delivered = 0;
+    let heavyGone = 0;
+    for (let i = 0; i < 9; i++) {
+      const p = g.parcels.find((q) => q.id === g.targetId)!;
+      g.teleport(p.zone.x, p.zone.z);
+      g.step(1.5);
+      if (g.parcels.find((q) => q.id === p.id)!.delivered) delivered++;
+      if (p.type === 'heavy') heavyGone++;
+      g.step(8); // driving time between stops
+    }
+    g.hit(7);
+    const lines = g.tally.lines;
+    const before = g.state.score;
+    g.step(320);
+    return { types: [...types], load0, load1: g.loadKg, heavyGone, delivered, lines, before, state: g.state, tally: g.tally };
+  });
+  expect(r.types.sort()).toEqual(['express', 'fragile', 'grandma', 'heavy', 'standard']);
+  expect(r.delivered).toBe(9);
+  expect(r.load1).toBeLessThan(r.load0);
+  expect(r.state.phase).toBe('ended');
+  expect(r.state.damage).toBe(21);
+  expect(r.lines.find((l) => l.label === 'Damage')!.points).toBe(-21);
+  expect(r.lines.find((l) => l.label === 'Streak')!.points).toBeGreaterThan(0);
+  expect(r.tally.score).toBe(r.before);
+  await expect(page.getByTestId('end-card')).toContainText('Shift over');
+  await expect(page.getByTestId('final-score')).toHaveText(String(r.tally.score));
+  await expect(page.getByTestId('rank')).toHaveText(r.tally.rank);
+  await expect(page.getByTestId('end-card')).toContainText('9 parcels delivered');
+});
+
+test('every parcel delivered ends the shift early, all delivered', async ({ page }) => {
+  await openGame(page);
+  const s = await page.evaluate(() => {
+    const g = window.__game;
+    g.start();
+    for (const p of g.parcels) g.deliver(p.id);
+    return { state: g.state, tally: g.tally };
+  });
+  expect(s.state.phase).toBe('ended');
+  expect(s.tally.rank).toBe('Christmas Hero');
+  await expect(page.getByTestId('end-card')).toContainText('All delivered');
+});
+
+test('stop picker: the tray lists the parcels and a tap sets the target; the minimap shows', async ({ page }) => {
+  await openGame(page);
+  await page.evaluate(() => window.__game.start());
+  await frames(page, 3);
+  await expect(page.getByTestId('minimap')).toBeVisible();
+  const first = await page.evaluate(() => window.__game.targetId);
+  await page.getByTestId('tray-toggle').click();
+  const items = page.getByTestId('tray').locator('.tray-item');
+  expect(await items.count()).toBe(await page.evaluate(() => window.__game.state.parcelsLeft));
+  const pick = await page.evaluate((first) => window.__game.parcels.filter((p) => p.id !== first).at(-1)!, first);
+  await page.getByTestId(`pick-${pick.id}`).click();
+  expect(await page.evaluate(() => window.__game.targetId)).toBe(pick.id);
+  await expect(page.getByTestId('tray')).toHaveCount(0);
+  await frames(page, 3);
+  await expect(page.getByTestId('target')).toContainText(pick.address);
 });
 
 test('teleport + deliver hooks, and setSeed resets the run', async ({ page }) => {
@@ -108,15 +184,17 @@ test('teleport + deliver hooks, and setSeed resets the run', async ({ page }) =>
   await page.evaluate(() => {
     const g = window.__game;
     g.start();
-    const z = g.parcels[0]!.zone;
+    const z = g.parcels.find((p) => p.id === g.targetId)!.zone;
     g.teleport(z.x, z.z);
     g.step(1.5);
   });
-  expect(await page.evaluate(() => window.__game.state.parcelsLeft)).toBe(0);
+  const total = await page.evaluate(() => window.__game.parcels.length);
+  expect(await page.evaluate(() => window.__game.state.parcelsLeft)).toBe(total - 1);
   await page.evaluate(() => window.__game.setSeed('another-day'));
   const s = await page.evaluate(() => window.__game.state);
   expect(s.phase).toBe('ready');
-  expect(s.parcelsLeft).toBe(1);
+  expect(s.parcelsLeft).toBe(await page.evaluate(() => window.__game.parcels.length));
+  expect(await page.evaluate(() => window.__game.parcels.every((p) => !p.delivered))).toBe(true);
 });
 
 test('keyboard drives the van in live mode', async ({ page, isMobile }) => {

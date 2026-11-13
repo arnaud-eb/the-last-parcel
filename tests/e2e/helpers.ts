@@ -5,6 +5,8 @@ export type GameApi = {
   state: {
     phase: string;
     score: number;
+    damage: number;
+    targetId: string | null;
     parcelsLeft: number;
     clock: string;
     elapsed: number;
@@ -13,7 +15,15 @@ export type GameApi = {
     drawCalls: number;
     triangles: number;
   };
-  parcels: { id: string; address: string; zone: { x: number; z: number; radius: number }; delivered: boolean }[];
+  parcels: {
+    id: string; type: string; address: string; zone: { x: number; z: number; radius: number }; y: number; district: string;
+    value: number; tip: number; hits: number; delivered: boolean; deliveredAt: number | null;
+  }[];
+  targetId: string | null;
+  tally: { delivered: number; total: number; lines: { label: string; points: number }[]; score: number; rank: string };
+  loadKg: number;
+  select(id: string): void;
+  hit(strength: number): unknown[];
   start(): void;
   restart(seed?: string): void;
   step(dt: number, input?: { steer?: number; throttle?: number; brake?: number }): GameApi['state'];

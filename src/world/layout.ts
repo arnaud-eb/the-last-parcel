@@ -309,8 +309,8 @@ function buildLamps(): Lamp[] {
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
       const x = p.x + sx * (p.hx - 3);
       const z = p.z + sz * (p.hz - 3);
-      // Not where a street enters the square.
-      if (onRoad(x, z, 2.5)) continue;
+      // Not where a street enters the square: vans cut that corner.
+      if (onRoad(x, z, 6)) continue;
       lamps.push({ x, y: p.y, z, rot: Math.atan2(-sx, -sz) });
     }
   }
@@ -366,6 +366,8 @@ function buildStops(buildings: Building[]): Stop[] {
       id: `s${stops.length + 1}`,
       address: `${2 * n - 1} ${b.street}`,
       zone: { x: b.x + lx * c + lz * s, z: b.z - lx * s + lz * c, radius: 2.8 },
+      y: b.y,
+      district: b.y < -10 ? 'grund' : b.z > 160 ? 'belle' : 'old',
     });
   }
   return stops;

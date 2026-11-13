@@ -1,7 +1,7 @@
 import { test } from '@playwright/test';
 import { frames, openGame } from './helpers';
 
-const MILESTONE = process.env.MILESTONE ?? 'm1';
+const MILESTONE = process.env.MILESTONE ?? 'm2';
 
 /** Milestone review shots from the fixed camera presets (src/render/cameraPresets.ts). */
 test('fixed camera screenshots', async ({ page }, info) => {

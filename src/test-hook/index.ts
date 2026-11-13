@@ -19,6 +19,8 @@ export function installTestHook(app: App): void {
         phase: g.phase,
         seed: g.seed,
         score: g.score,
+        damage: g.damage,
+        targetId: g.targetId,
         parcelsLeft: g.parcelsLeft,
         clock: g.clock.format(),
         elapsed: g.clock.elapsed,
@@ -37,8 +39,24 @@ export function installTestHook(app: App): void {
       return { x: p.x, y: p.y, z: p.z, heading: app.van.heading, speed: app.van.speed, upY: app.van.upY };
     },
     get parcels() {
-      return app.game.parcels.map((p) => ({ id: p.id, address: p.stop.address, zone: p.stop.zone, value: p.value, delivered: p.delivered }));
+      return app.game.parcels.map((p) => ({
+        id: p.id, type: p.type, address: p.stop.address, zone: p.stop.zone, y: p.stop.y, district: p.stop.district,
+        value: p.value, tip: p.tip, hits: p.hits, delivered: p.delivered, deliveredAt: p.deliveredAt,
+      }));
     },
+    get targetId() {
+      return app.game.targetId;
+    },
+    get tally() {
+      return app.game.tally;
+    },
+    get loadKg() {
+      return app.van.loadKg;
+    },
+    /** Stop picker: aim at this parcel. */
+    select: (id: string) => app.select(id),
+    /** A collision losing `strength` m/s (as if the van hit something). */
+    hit: (strength: number) => app.game.hit(strength),
     start: () => app.start(),
     restart: (seed?: string) => app.restart(seed),
     /** Advance the simulation by dt seconds (fixed 1/60 sub-steps). */

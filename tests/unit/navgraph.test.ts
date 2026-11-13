@@ -26,3 +26,14 @@ describe('navigation graph', () => {
     expect(p.at(-1)!.y).toBeLessThan(-30); // down in the valley
   });
 });
+
+describe('driving distances', () => {
+  it('to Grund are much longer than the straight line from the Corniche above it', () => {
+    const g = new NavGraph();
+    // From the Corniche (upper town) to Rue Münster, about 75 m away but 34 m below.
+    const [d] = g.distances(231, 0, -22, [{ x: 298, y: -34, z: 6 }]);
+    expect(d).toBeGreaterThan(200);
+    const [near] = g.distances(231, 0, -22, [{ x: 228, y: 0, z: -62 }]);
+    expect(near).toBeLessThan(60);
+  });
+});

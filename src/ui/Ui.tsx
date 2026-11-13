@@ -1,6 +1,9 @@
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { App, AppEvent, HudSnapshot } from '../app';
+import { PARCEL_RULES, parcelValue, type Parcel } from '../core/parcels';
+import { Minimap } from './Minimap';
+import { ParcelTray, TYPE_ICON } from './ParcelTray';
 
 type Toast = { id: number; from?: string; text: string };
 
@@ -19,6 +22,7 @@ export function mountUi(root: HTMLElement, app: App, opts: { debug: boolean }): 
 function Ui({ app, debug }: { app: App; debug: boolean }) {
   const [hud, setHud] = useState<HudSnapshot | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [trayOpen, setTrayOpen] = useState(false);
   const markerRef = useRef<HTMLDivElement>(null);
   const last = useRef('');
   const nextId = useRef(1);
@@ -34,8 +38,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       // Move the target marker every frame without re-rendering.
       const m = markerRef.current;
       if (m && s.target) {
-        const x = Math.min(94, Math.max(6, s.target.x));
-        const y = Math.min(90, Math.max(12, s.target.y));
+        // On screen: on the door. Off screen: on an ellipse round the centre, clear of the HUD corners and pedals.
+        const x = s.target.onScreen ? s.target.x : 50 + Math.cos(s.target.angle) * 36;
+        const y = s.target.onScreen ? s.target.y : 50 + Math.sin(s.target.angle) * 26;
         m.style.left = `${x}%`;
         m.style.top = `${y}%`;
         const arrow = m.querySelector<HTMLElement>('.arrow');
@@ -43,7 +48,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
         m.dataset.on = String(s.target.onScreen);
       }
       // Re-render only when visible text changes.
-      const key = [s.phase, s.clock, s.parcelsLeft, s.score, Math.round(s.handover * 20), s.target ? Math.round(s.target.dist) : -1, s.target?.onScreen, debug ? `${s.debug.fps}${s.debug.drawCalls}` : ''].join('|');
+      const key = [s.phase, s.clock, s.parcelsLeft, s.score, Math.round(s.handover * 20), s.target?.id, s.target ? Math.round(s.target.dist) : -1, s.target?.onScreen, debug ? `${s.debug.fps}${s.debug.drawCalls}` : ''].join('|');
       if (key !== last.current) {
         last.current = key;
         setHud(s);
@@ -55,7 +60,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
         toast(`Moien! ${n} parcel${n === 1 ? '' : 's'} left. Last run before Christmas Eve dinner. Merci and good luck.`, 'Dispatch', 4500);
       } else if (e.type === 'delivered') {
         navigator.vibrate?.(60);
-        toast(`${THANKS[Math.floor(Math.random() * THANKS.length)]}  +${e.parcel.value}`, e.parcel.stop.address);
+        toast(deliveredText(e.parcel), e.parcel.stop.address);
+      } else if (e.type === 'damaged') {
+        toast(e.fragile ? `Ouch! Something fragile rattled.  −${e.penalty}` : `Ouch!  −${e.penalty}`, undefined, 1800);
       } else if (e.type === 'recovered') {
         toast(e.auto ? 'Back on the road. Careful on the ice!' : 'Back on the road.', undefined, 2200);
       } else if (e.type === 'hit') {
@@ -80,7 +87,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
           <div class="bar"><i style={{ width: `${(1 - hud.progress) * 100}%` }} /></div>
         </div>
         <div class="stats">
-          <div class="panel stat"><b data-testid="parcels">{hud.parcelsLeft}</b><span>parcels</span></div>
+          <button class={`panel stat tray-toggle${trayOpen ? ' open' : ''}`} data-testid="tray-toggle" aria-label="Choose the next stop" onClick={() => setTrayOpen(!trayOpen)}>
+            <b data-testid="parcels">{hud.parcelsLeft}</b><span>parcels ▾</span>
+          </button>
           <div class="panel stat"><b data-testid="score">{hud.score}</b><span>score</span></div>
           {hud.phase === 'driving' && (
             <button class="panel reset" data-testid="reset" aria-label="Put the van back on the road" title="Back on the road (R)" onClick={() => app.recover()}>↺</button>
@@ -88,9 +97,12 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
         </div>
       </div>
 
+      {hud.phase !== 'ended' && <Minimap app={app} />}
+      {trayOpen && hud.phase !== 'ended' && <ParcelTray app={app} onPick={() => setTrayOpen(false)} />}
+
       {hud.target && hud.phase === 'driving' && (
-        <div class="panel target-card">
-          <span>📦 {hud.target.address}</span>
+        <div class="panel target-card" data-testid="target">
+          <span>{TYPE_ICON[hud.target.type]} {hud.target.address}</span>
           <span class="dist">{Math.round(hud.target.dist)} m</span>
         </div>
       )}
@@ -109,7 +121,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
         </div>
       )}
 
-      <div class="toasts">
+      <div class="toasts" style={{ display: hud.phase === 'ended' ? 'none' : undefined }}>
         {toasts.map((t) => (
           <div key={t.id} class="panel toast">
             {t.from && <span class="from">{t.from}</span>}
@@ -119,7 +131,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       </div>
 
       <TouchControls app={app} />
-      {hud.phase === 'driving' && <div class="panel keys-hint">WASD / arrows to drive · Space to brake · R if stuck · stop in the glowing ring</div>}
+      {hud.phase === 'driving' && <div class="panel keys-hint">WASD / arrows to drive · Space to brake · Tab next stop · R if stuck · stop in the glowing ring</div>}
 
       {hud.phase === 'ready' && !app.opts.test && (
         <div class="overlay" onPointerDown={() => app.start()}>
@@ -132,17 +144,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
         </div>
       )}
 
-      {hud.phase === 'ended' && (
-        <div class="overlay">
-          <div class="panel card" data-testid="end-card">
-            <h2>{hud.parcelsLeft === 0 ? 'All delivered!' : '6pm. Shift over.'}</h2>
-            <div class="big">{hud.score}</div>
-            <p>{hud.parcelsLeft === 0 ? `Done at ${hud.clock}, before the cutoff.` : `${hud.parcelsLeft} parcel${hud.parcelsLeft === 1 ? '' : 's'} won't be under the tree tonight.`}</p>
-            <p><b>Schéi Chrëschtdeeg!</b></p>
-            <button class="btn" onClick={() => { app.restart(); app.start(); }}>Drive again</button>
-          </div>
-        </div>
-      )}
+      {hud.phase === 'ended' && <TallyCard app={app} />}
 
       {debug && (
         <div class="panel debug" data-testid="debug">
@@ -151,6 +153,52 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       )}
       <RotateHint />
     </>
+  );
+}
+
+function deliveredText(p: Parcel): string {
+  const thanks = p.type === 'grandma' ? 'Merci, mäi Schatz! Oma is so happy.' : THANKS[Math.floor(Math.random() * THANKS.length)];
+  let pts = parcelValue(p);
+  if (p.type === 'grandma') pts += PARCEL_RULES.grandmaBonus;
+  if (p.type === 'express' && (p.deliveredAt ?? 999) < PARCEL_RULES.expressBy) pts += PARCEL_RULES.expressBonus;
+  if (p.type === 'fragile' && p.hits === 0) pts += PARCEL_RULES.fragileIntactBonus;
+  const tip = p.tip && (p.deliveredAt ?? 999) <= PARCEL_RULES.tipBy && (p.type !== 'fragile' || p.hits === 0) ? `  (tip +${p.tip})` : '';
+  return `${thanks}  +${pts}${tip}`;
+}
+
+const RANK_LINE: Record<string, string> = {
+  'Missed the Sleigh': 'Some trees will be bare tonight. Tomorrow, the sleigh.',
+  'On Time': 'Most of the town has its presents. Well driven.',
+  'Christmas Hero': 'The whole old town is talking about the Kuerier van.',
+};
+
+function TallyCard({ app }: { app: App }) {
+  const g = app.game;
+  const t = g.tally;
+  const all = t.delivered === t.total;
+  return (
+    <div class="overlay">
+      <div class="panel card tally" data-testid="end-card">
+        <p class="kicker">{all ? `All delivered at ${g.clock.format()}` : '6pm. Shift over.'}</p>
+        <h2 data-testid="rank">{t.rank}</h2>
+        <p>{RANK_LINE[t.rank]}</p>
+        <table>
+          <tbody>
+            {t.lines.map((l) => (
+              <tr key={l.label} class={l.points === 0 ? 'zero' : ''}>
+                <td>{l.label}</td>
+                <td>{l.points > 0 ? `+${l.points}` : l.points < 0 ? `−${-l.points}` : '0'}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr><td>Score</td><td class="big" data-testid="final-score">{t.score}</td></tr>
+          </tfoot>
+        </table>
+        <p>{all ? 'Every parcel under a tree.' : `${t.total - t.delivered} of ${t.total} parcels won't be under the tree tonight.`} <b>Schéi Chrëschtdeeg!</b></p>
+        <button class="btn" onClick={() => { app.restart(); app.start(); }}>Drive again</button>
+      </div>
+    </div>
   );
 }
 

@@ -34,7 +34,7 @@ export class DeliveryZoneView {
     const y = (positionLocal as N).y.div(h).add(0.5);
     const fade = smoothstep(1.0, 0.0, y).mul(smoothstep(0.0, 0.03, y));
     const shimmer = sin(y.mul(40).sub((U.time as N).mul(2.5))).mul(0.15).add(0.85);
-    beamMat.colorNode = vec4(mix(GOLD, vec3(1.0, 0.9, 0.7), y).mul(fade.mul(shimmer).mul(0.22)), 1);
+    beamMat.colorNode = vec4(mix(GOLD, vec3(1.0, 0.9, 0.7), y).mul(fade.mul(shimmer).mul(0.13)), 1);
     beamMat.fog = false;
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(radius * 0.35, radius * 0.6, h, 24, 1, true), beamMat);
     beam.position.y = h / 2;
@@ -42,10 +42,39 @@ export class DeliveryZoneView {
 
     this.group.add(disc, beam);
     this.group.name = 'delivery-zone';
+
+    // The other parcels' doors: a dim, still ring each, one instanced draw.
+    const dimMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+    const dimRing = smoothstep(0.8, 0.88, r).mul(smoothstep(1.0, 0.92, r));
+    dimMat.colorNode = vec4(GOLD.mul(dimRing.mul(0.9).add(inner.mul(0.6))), 1);
+    dimMat.fog = false;
+    const plane = new THREE.PlaneGeometry(radius * 2, radius * 2).rotateX(-Math.PI / 2);
+    this.others = new THREE.InstancedMesh(plane, dimMat, DeliveryZoneView.MAX_OTHERS);
+    this.others.count = 0;
+    this.others.renderOrder = 3;
+    this.others.frustumCulled = false;
+    this.others.name = 'delivery-zones';
   }
 
-  place(x: number, z: number, visible: boolean): void {
-    this.group.position.set(x, 0, z);
+  static readonly MAX_OTHERS = 24;
+  /** Dim rings at the other undelivered stops. Add to the scene next to `group`. */
+  readonly others: THREE.InstancedMesh;
+  private readonly m = new THREE.Matrix4();
+  private othersKey = '';
+
+  place(x: number, y: number, z: number, visible: boolean): void {
+    this.group.position.set(x, y, z);
     this.group.visible = visible;
+  }
+
+  /** Rings at these stops (zone centre and ground height). Cheap to call every frame. */
+  placeOthers(stops: readonly { x: number; y: number; z: number }[]): void {
+    const key = stops.map((s) => `${s.x},${s.z}`).join(';');
+    if (key === this.othersKey) return;
+    this.othersKey = key;
+    const n = Math.min(stops.length, DeliveryZoneView.MAX_OTHERS);
+    for (let i = 0; i < n; i++) this.others.setMatrixAt(i, this.m.makeTranslation(stops[i]!.x, stops[i]!.y + 0.05, stops[i]!.z));
+    this.others.count = n;
+    this.others.instanceMatrix.needsUpdate = true;
   }
 }

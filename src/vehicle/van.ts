@@ -31,6 +31,13 @@ export const VAN = {
   minSteer: 0.17,
 };
 
+/** Share of the empty van's acceleration and braking left with `kg` on board. */
+export function loadFactor(kg: number): number {
+  return VAN.mass / (VAN.mass + Math.max(0, kg) * LOAD_LEVERAGE);
+}
+/** Load counts extra: the empty van's mass includes driver and fuel, and the effect should be felt. */
+const LOAD_LEVERAGE = 1.5;
+
 export type WheelState = { steer: number; spin: number; compression: number };
 
 /** The van's body and Rapier raycast vehicle controller. Local +Z is forward. */
@@ -41,6 +48,8 @@ export class VanPhysics {
   private prevSpeed = 0;
   /** Largest one-step speed loss this frame (m/s), for hit detection. */
   impact = 0;
+  /** Parcels on board (kg). A heavier load accelerates and brakes less. */
+  loadKg = 0;
 
   constructor(R: Rapier, private readonly world: RAPIER.World, x: number, z: number, heading: number) {
     const desc = R.RigidBodyDesc.dynamic()
@@ -111,15 +120,19 @@ export class VanPhysics {
     const rate = 2.6 * dt;
     this.steer += Math.max(-rate, Math.min(rate, target - this.steer));
 
+    // Same forces moving more mass: acceleration and braking fall off with the load.
+    const lift = loadFactor(this.loadKg);
+    const engineForce = VAN.engineForce * lift;
+    const brakeForce = VAN.brakeForce * lift;
     let engine = 0;
     let brake = 0;
     if (input.throttle > 0) {
-      if (speed < -0.5) brake = VAN.brakeForce * input.throttle;
-      else if (speed < VAN.maxSpeed) engine = VAN.engineForce * input.throttle * (1 - (0.6 * speed) / VAN.maxSpeed);
+      if (speed < -0.5) brake = brakeForce * input.throttle;
+      else if (speed < VAN.maxSpeed) engine = engineForce * input.throttle * (1 - (0.6 * speed) / VAN.maxSpeed);
     }
     if (input.brake > 0) {
-      if (speed > 0.6) brake = VAN.brakeForce * input.brake;
-      else if (speed > -VAN.maxReverse) engine = -VAN.engineForce * 0.6 * input.brake;
+      if (speed > 0.6) brake = brakeForce * input.brake;
+      else if (speed > -VAN.maxReverse) engine = -engineForce * 0.6 * input.brake;
     }
     if (input.throttle === 0 && input.brake === 0) brake = 1.2; // rolling resistance
 

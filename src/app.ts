@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { Game, type GameEvent } from './core/game';
+import type { Parcel } from './core/parcels';
 import { createRenderer, type Backend } from './render/renderer';
 import { AdaptiveQuality, type QualitySetting } from './render/quality';
 import { createPost, rebuildPost } from './render/post';
@@ -15,6 +16,7 @@ import { VanPhysics } from './vehicle/van';
 import { RecoveryWatch } from './vehicle/recovery';
 import { nearestRoad, recoveryPoint } from './world/roads';
 import { terrainHeight } from './world/terrain';
+import { NavGraph } from './world/navgraph';
 import { VanMesh } from './vehicle/vanMesh';
 import { buildColliders } from './world/colliders';
 import { Input } from './ui/input';
@@ -29,7 +31,7 @@ export type AppOptions = {
   isMobile: boolean;
 };
 
-export type AppEvent = GameEvent | { type: 'hit'; strength: number } | { type: 'recovered'; auto: boolean };
+export type AppEvent = GameEvent | { type: 'hit'; strength: number } | { type: 'recovered'; auto: boolean } | { type: 'targetChanged' };
 
 /** What the HUD needs each frame. */
 export type HudSnapshot = {
@@ -41,7 +43,7 @@ export type HudSnapshot = {
   parcelsTotal: number;
   score: number;
   handover: number;
-  target: { address: string; dist: number; x: number; y: number; onScreen: boolean; angle: number } | null;
+  target: { id: string; type: Parcel['type']; address: string; dist: number; x: number; y: number; onScreen: boolean; angle: number } | null;
   debug: { fps: number; drawCalls: number; triangles: number; tier: string; scale: number; backend: Backend };
 };
 
@@ -89,9 +91,20 @@ export class App {
 
     const s = this.world.layout.start;
     this.van = new VanPhysics(R, physics, s.x, s.z, s.heading);
-    this.scene.add(this.vanMesh.group, this.vanMesh.shadow, this.zone.group);
+    this.scene.add(this.vanMesh.group, this.vanMesh.shadow, this.zone.group, this.zone.others);
 
-    this.game = new Game({ seed: opts.seed, stops: this.world.layout.stops, parcelCount: 1 });
+    // Default target = nearest stop by driving distance, not as the crow flies (Grund is below the Corniche).
+    const nav = new NavGraph();
+    this.game = new Game({
+      seed: opts.seed,
+      stops: this.world.layout.stops,
+      start: s,
+      distance: (x, z, stops) => {
+        const y = this.van ? this.van.body.translation().y : 0;
+        return nav.distances(x, y, z, stops.map((st) => ({ x: st.zone.x, y: st.y, z: st.zone.z })));
+      },
+    });
+    this.van.loadKg = this.game.loadKg;
     this.chase = new ChaseCamera(this.camera, R, physics);
 
     this.snow = new Snow(this.quality.settings.snowCount);
@@ -140,9 +153,10 @@ export class App {
   }
 
   restart(seed = this.game.seed): void {
-    this.game.reset(seed);
     const s = this.world.layout.start;
     this.van.teleport(s.x, s.z, s.heading);
+    this.game.reset(seed);
+    this.van.loadKg = this.game.loadKg;
     this.chase.reset();
     this.recovery.reset();
   }
@@ -204,13 +218,30 @@ export class App {
     this.physics.step();
     this.van.afterStep();
     if (settleOnly) return;
-    if (this.van.impact > 3) this.emit([{ type: 'hit', strength: this.van.impact }]);
+    if (this.van.impact > 3) this.emit([{ type: 'hit', strength: this.van.impact }, ...this.game.hit(this.van.impact)]);
     if (this.game.phase === 'driving' && this.recovery.update(dt, { upY: this.van.upY, speed: this.van.speed, wheelsOnGround: this.van.wheelsOnGround() })) {
       this.recover(true);
       return;
     }
     const p = this.van.body.translation();
-    this.emit(this.game.update(dt, { x: p.x, z: p.z, speed: this.van.speed }));
+    const events = this.game.update(dt, { x: p.x, z: p.z, speed: this.van.speed });
+    if (events.length) this.van.loadKg = this.game.loadKg;
+    this.emit(events);
+  }
+
+  /** Stop picker: aim at this parcel. */
+  select(id: string): void {
+    if (this.game.select(id)) this.emit([{ type: 'targetChanged' }]);
+  }
+
+  /** Cycle the target through the parcels left, nearest first (keyboard Tab). */
+  cycleTarget(): void {
+    const left = this.game.remaining;
+    if (left.length < 2) return;
+    const p = this.van.body.translation();
+    left.sort((a, b) => Math.hypot(a.stop.zone.x - p.x, a.stop.zone.z - p.z) - Math.hypot(b.stop.zone.x - p.x, b.stop.zone.z - p.z));
+    const i = left.findIndex((q) => q.id === this.game.targetId);
+    this.select(left[(i + 1) % left.length]!.id);
   }
 
   private frame(now: number): void {
@@ -224,6 +255,7 @@ export class App {
 
     this.input.update(dt);
     if (this.input.takeRecover() && this.game.phase === 'driving') this.recover();
+    if (this.input.takeCycle() && this.game.phase === 'driving') this.cycleTarget();
     if (this.game.phase === 'ready' && this.input.active && !this.opts.test) this.start();
 
     if (!this.simPaused) {
@@ -260,7 +292,9 @@ export class App {
     U.headDir.value.copy(fwd);
 
     const target = this.game.target;
-    this.zone.place(target?.stop.zone.x ?? 0, target?.stop.zone.z ?? 0, !!target && this.game.phase !== 'ended');
+    const live = this.game.phase !== 'ended';
+    this.zone.place(target?.stop.zone.x ?? 0, target?.stop.y ?? 0, target?.stop.zone.z ?? 0, !!target && live);
+    this.zone.placeOthers(live ? this.game.remaining.filter((q) => q !== target).map((q) => ({ x: q.stop.zone.x, y: q.stop.y, z: q.stop.zone.z })) : []);
     this.zone.progress.value = this.game.handover.progress;
 
     if (!this.presetName) this.chase.update(dt || FIXED_DT, this.tmpV, this.van.heading, this.van.speed);
@@ -296,7 +330,7 @@ export class App {
     if (target) {
       const z = target.stop.zone;
       const vp = this.van.body.translation();
-      const world = new THREE.Vector3(z.x, 1.5, z.z);
+      const world = new THREE.Vector3(z.x, target.stop.y + 1.5, z.z);
       const ndc = world.clone().project(this.camera);
       const behind = world.clone().sub(this.camera.position).dot(this.camera.getWorldDirection(this.tmpV)) < 0;
       const onScreen = !behind && Math.abs(ndc.x) < 0.9 && Math.abs(ndc.y) < 0.85;
@@ -307,6 +341,8 @@ export class App {
         ny = -Math.abs(ny) - 1;
       }
       t = {
+        id: target.id,
+        type: target.type,
         address: target.stop.address,
         dist: Math.hypot(z.x - vp.x, z.z - vp.z),
         x: (nx * 0.5 + 0.5) * 100,
