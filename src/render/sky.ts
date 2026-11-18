@@ -2,7 +2,7 @@ import * as THREE from 'three/webgpu';
 import {
   Fn, dot, float, floor, fog, hash, max, mix, normalize, pow, positionWorldDirection, smoothstep, step, vec2, vec3,
 } from 'three/tsl';
-import { U, fogFactor } from './materials';
+import { U, fogColor, fogFactor } from './materials';
 
 type N = any;
 
@@ -44,7 +44,7 @@ export function setupSky(scene: THREE.Scene): { update(progress: number): void }
     return sky;
   })();
 
-  scene.fogNode = fog(U.horizon, fogFactor());
+  scene.fogNode = fog(fogColor(), fogFactor());
 
   const hemi = new THREE.HemisphereLight(0x4f7bc4, 0x141824, 0.55);
   const moon = new THREE.DirectionalLight(0x9db4ef, 0.35);

@@ -324,11 +324,29 @@ export function cobbleMaterial(): THREE.MeshStandardNodeMaterial {
   return m;
 }
 
-/** Height fog: thicker low down, density rises toward 6pm. */
+/** 0 on the plateau, 1 well down in the Pétrusse and Alzette valleys (by fragment height). */
+const valleyDepth = Fn(() => smoothstep(-5, -26, positionWorld.y));
+
+/**
+ * Height fog: thicker low down, density rises toward 6pm. Down in the valleys
+ * an extra layer of mist drifts in slow patches, so Grund and the Pétrusse sit
+ * in a milky band seen from the bridge and the Corniche.
+ */
 export const fogFactor = Fn(() => {
   const d = length(positionWorld.sub(cameraPosition));
   const heightAtten = exp(positionWorld.y.max(0).mul(-0.035)).mul(0.6).add(0.4);
-  return float(1).sub(exp(d.mul(U.fogDensity).mul(heightAtten).negate())).min(0.97);
+  const base = float(1).sub(exp(d.mul(U.fogDensity).mul(heightAtten).negate()));
+  const patches = mx_noise_float(vec3(positionWorld.x.mul(0.018).add(U.time.mul(0.012)), positionWorld.y.mul(0.05), positionWorld.z.mul(0.018))).mul(0.5).add(0.5);
+  // Less of it when the camera is down in the valley too, so Grund stays drivable.
+  const inValley = smoothstep(-8, -24, cameraPosition.y).mul(0.45);
+  const mist = float(1).sub(exp(d.mul(0.012).mul(valleyDepth()).mul(patches.mul(0.9).add(0.4)).mul(float(1).sub(inValley)).negate()));
+  return float(1).sub(float(1).sub(base).mul(float(1).sub(mist))).min(0.97);
+});
+
+/** Fog colour: the horizon, paler and faintly warm (lamp light scattered) in the valley mist. */
+export const fogColor = Fn(() => {
+  const mistCol = U.horizon.mul(1.55).add(vec3(0.035, 0.028, 0.02));
+  return mix(U.horizon, mistCol, valleyDepth().mul(0.85));
 });
 
 /** Plain vertex-coloured lit material for props (lamp posts, van trim, tree). */

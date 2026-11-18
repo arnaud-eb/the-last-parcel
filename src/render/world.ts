@@ -9,6 +9,7 @@ import { lm } from '../world/landmarkBlocks';
 import { MAX_LAMPS, U } from './materials';
 import { setupSky } from './sky';
 import { buildMarkets, type MarketView } from '../world/marketView';
+import { buildCasemates } from '../world/casemates';
 
 const LAMP_INTENSITY = 5.0;
 
@@ -36,6 +37,7 @@ export class WorldView {
     scene.add(landmarks);
     scene.add(buildLamps(this.layout.lamps));
     scene.add(buildLights(this.layout.strings, lm('tree')));
+    scene.add(buildCasemates());
     this.markets = buildMarkets();
     scene.add(this.markets.group);
     this.sky = setupSky(scene);
