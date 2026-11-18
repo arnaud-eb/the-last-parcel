@@ -172,6 +172,11 @@ export class VanPhysics {
     return 1 - 2 * (q.x * q.x + q.z * q.z);
   }
 
+  /** Where each rear wheel touches the ground (world), or null in the air. For tyre tracks. */
+  rearContacts(): ({ x: number; y: number; z: number } | null)[] {
+    return [2, 3].map((i) => (this.vehicle.wheelIsInContact(i) ? this.vehicle.wheelContactPoint(i) : null));
+  }
+
   wheelsOnGround(): number {
     let n = 0;
     for (let i = 0; i < 4; i++) if (this.vehicle.wheelIsInContact(i)) n++;

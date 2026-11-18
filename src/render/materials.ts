@@ -279,6 +279,31 @@ export function snowMaterial(): THREE.MeshStandardNodeMaterial {
 }
 
 /**
+ * Lamp reflections on a wet street: each lamp's mirror image smears into a long
+ * streak running toward the camera (tight sideways, loose along the view), like
+ * lights on a rainy road at night. Returns radiance to add.
+ */
+const wetStreaks = Fn(([P, wet, rough]: N[]) => {
+  const acc = float(0).toVar();
+  const toC = cameraPosition.sub(P);
+  const cxz = normalize(toC.xz);
+  const elevC = toC.y.div(length(toC.xz).max(0.01));
+  Loop(U.lampCount, ({ i }: N) => {
+    const l = U.lamps.element(i) as N;
+    const toL = l.xyz.sub(P);
+    const lxz = normalize(toL.xz);
+    // The lamp must be on the far side of the point, in line with the camera...
+    const side = smoothstep(0.9975, 0.99985, dot(lxz, cxz.negate()));
+    // ...and at the mirror elevation; tolerance stretches the streak toward the viewer.
+    const elevL = toL.y.div(length(toL.xz).max(0.01));
+    const along = exp(abs(elevL.sub(elevC)).mul(-1.6));
+    const att = l.w.div(dot(toL, toL).mul(0.012).add(1));
+    acc.addAssign(side.mul(along).mul(att));
+  });
+  return LAMP_COLOR.mul(acc.mul(wet).mul(rough).mul(0.7));
+});
+
+/**
  * Wet cobblestones with slushy snow toward the curbs.
  * uv: x = lateral metres from the centreline, y = metres along the street.
  * Vertex colour .r = half-width / 10 (squares use a huge value: no curb snow).
@@ -319,8 +344,11 @@ export function cobbleMaterial(): THREE.MeshStandardNodeMaterial {
 
   m.colorNode = albedo;
   m.roughnessNode = mix(float(0.85), float(0.22), wet);
+  // Stones break the streaks up into glints; the gaps between them stay darker.
+  const broken = stone.mul(0.6).add(0.4).mul(hs.mul(0.5).add(0.75));
   m.emissiveNode = lampLight(P, Nw, albedo, wet.mul(2.2).add(0.05), float(70))
-    .add(U.horizon.mul(fres.mul(wet).mul(0.5)));
+    .add(U.horizon.mul(fres.mul(wet).mul(0.5)))
+    .add(wetStreaks(P, wet, broken));
   return m;
 }
 

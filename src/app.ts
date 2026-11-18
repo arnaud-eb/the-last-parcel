@@ -10,6 +10,7 @@ import { U } from './render/materials';
 import { WorldView } from './render/world';
 import { ChaseCamera } from './render/chaseCamera';
 import { DeliveryZoneView } from './render/deliveryZone';
+import { TyreTracks } from './render/tyreTracks';
 import { CAMERA_PRESETS, type CameraPresetName } from './render/cameraPresets';
 import { loadRapier, type Rapier } from './vehicle/rapier';
 import { VanPhysics } from './vehicle/van';
@@ -63,6 +64,7 @@ export class App {
 
   private readonly vanMesh = new VanMesh();
   private readonly zone = new DeliveryZoneView();
+  private readonly tracks = new TyreTracks();
   private readonly chase: ChaseCamera;
   private readonly recovery = new RecoveryWatch();
   private snow: Snow;
@@ -93,7 +95,7 @@ export class App {
 
     const s = this.world.layout.start;
     this.van = new VanPhysics(R, physics, s.x, s.z, s.heading);
-    this.scene.add(this.vanMesh.group, this.vanMesh.shadow, this.zone.group, this.zone.others);
+    this.scene.add(this.vanMesh.group, this.vanMesh.shadow, this.zone.group, this.zone.others, this.tracks.mesh);
 
     // Default target = next stop on a planned route by driving distance, not as the crow flies (Grund is below the Corniche).
     const nav = new NavGraph();
@@ -278,6 +280,7 @@ export class App {
     this.world.markets.update(this.simPaused || this.paused ? 0 : dt, { x: vp.x, z: vp.z, speed: this.van.speed });
     this.syncVisuals(dt);
     U.time.value = t;
+    this.tracks.update(this.van.rearContacts(), t);
     this.snow.step(this.renderer, dt, this.game.clock.progress);
     this.post.render();
     this.publishHud();
