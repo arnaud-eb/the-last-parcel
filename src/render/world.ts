@@ -8,6 +8,7 @@ import { buildLandmarkExtras } from '../world/landmarks';
 import { lm } from '../world/landmarkBlocks';
 import { MAX_LAMPS, U } from './materials';
 import { setupSky } from './sky';
+import { buildMarkets, type MarketView } from '../world/marketView';
 
 const LAMP_INTENSITY = 5.0;
 
@@ -22,6 +23,8 @@ export class WorldView {
 
   /** Moving set pieces (the Ferris wheel), driven by scene time in seconds. */
   readonly animateLandmarks: (time: number) => void;
+  /** Christmas markets: stalls, steam and the crowd (which steps out of the van's way). */
+  readonly markets: MarketView;
 
   constructor(readonly scene: THREE.Scene) {
     this.layout = buildLayout();
@@ -33,11 +36,13 @@ export class WorldView {
     scene.add(landmarks);
     scene.add(buildLamps(this.layout.lamps));
     scene.add(buildLights(this.layout.strings, lm('tree')));
+    this.markets = buildMarkets();
+    scene.add(this.markets.group);
     this.sky = setupSky(scene);
     scene.updateMatrixWorld(true);
     scene.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh || isInside(o, landmarks)) return;
+      if (!mesh.isMesh || isInside(o, landmarks) || isInside(o, this.markets.group)) return;
       const geo = mesh.geometry;
       if (!geo.boundingSphere) geo.computeBoundingSphere();
       const sphere = (mesh as THREE.InstancedMesh).isInstancedMesh ? (mesh as THREE.InstancedMesh).boundingSphere : geo.boundingSphere;

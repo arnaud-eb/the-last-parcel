@@ -5,10 +5,13 @@
  */
 import { frameAt, roadLength } from './roads';
 import { LANDMARKS, PLAZAS, ROADS } from './town';
+import { inStall } from './market';
 
 export type NavNode = { x: number; y: number; z: number; links: number[] };
 
 const STEP = 5;
+/** Grid spacing across squares: fine enough to find the lanes between market stalls. */
+const PLAZA_STEP = 4;
 const JOIN = 7; // nodes of different roads closer than this are linked (junctions)
 
 /** Within a landmark's footprint plus a van's half width and some room. */
@@ -40,16 +43,16 @@ export class NavGraph {
     }
     for (const p of PLAZAS) {
       const ids: number[] = [];
-      const cols = Math.max(2, Math.round((p.hx * 2) / 8));
-      const rows = Math.max(2, Math.round((p.hz * 2) / 8));
+      const cols = Math.max(2, Math.round((p.hx * 2) / PLAZA_STEP));
+      const rows = Math.max(2, Math.round((p.hz * 2) / PLAZA_STEP));
       const grid: number[][] = [];
       for (let r = 0; r <= rows; r++) {
         grid.push([]);
         for (let c = 0; c <= cols; c++) {
           const x = p.x - p.hx + 1 + ((p.hx * 2 - 2) * c) / cols;
           const z = p.z - p.hz + 1 + ((p.hz * 2 - 2) * r) / rows;
-          // Squares hold landmarks (the Christmas tree, the Gëlle Fra): route round them.
-          if (insideLandmark(x, z)) {
+          // Squares hold landmarks (the Christmas tree, the Gëlle Fra) and market stalls: route round them.
+          if (insideLandmark(x, z) || inStall(x, z, 2.5)) {
             grid[r]!.push(-1);
             continue;
           }

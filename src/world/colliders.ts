@@ -2,6 +2,7 @@ import type { Rapier } from '../vehicle/rapier';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import type { Layout } from './layout';
 import { landmarkColliders } from './landmarkBlocks';
+import { STALL, STALLS } from './market';
 import { TERRAIN, parapetSegments } from './parapets';
 import { terrainHeight } from './terrain';
 import { ROADS, VALLEYS } from './town';
@@ -68,6 +69,7 @@ export function buildColliders(R: Rapier, world: RAPIER.World, layout: Layout): 
     add(R.ColliderDesc.cuboid(b.width / 2, b.height / 2, b.depth / 2).setTranslation(b.x, b.y + b.height / 2, b.z).setRotation(yawQuat(b.rot)));
   }
   for (const l of layout.lamps) add(R.ColliderDesc.cylinder(2.2, 0.14).setTranslation(l.x, l.y + 2.2, l.z));
+  for (const st of STALLS) add(R.ColliderDesc.cuboid(st.width / 2, STALL.ridge / 2, st.depth / 2).setTranslation(st.x, st.y + STALL.ridge / 2, st.z).setRotation(yawQuat(st.rot)));
   for (const c of landmarkColliders()) add(R.ColliderDesc.cylinder(c.height / 2, c.radius).setTranslation(c.x, c.y + c.height / 2, c.z));
 
   // Invisible walls along cliff rims, with gaps where streets go over or down them.
