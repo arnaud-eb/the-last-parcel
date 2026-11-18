@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'preact/hooks';
 import type { App } from '../app';
 import { PLAZAS, RIVER, ROADS, VALLEY_Y } from '../world/town';
-import { TYPE_COLOR } from './ParcelTray';
+import { PARCEL_COLOR } from '../core/parcels';
 
 /** Metres from the van to the edge of the map. */
 const RANGE = 150;
@@ -92,7 +92,7 @@ function draw(app: App, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D
     }
     ctx.beginPath();
     ctx.arc(x, y, (isTarget ? 4.5 : 3) * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = TYPE_COLOR[p.type];
+    ctx.fillStyle = PARCEL_COLOR[p.type];
     ctx.fill();
     if (isTarget) {
       ctx.lineWidth = 2 * dpr;

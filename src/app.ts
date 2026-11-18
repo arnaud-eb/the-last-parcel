@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import type RAPIER from '@dimforge/rapier3d-compat';
 import { Game, type GameEvent } from './core/game';
-import type { Parcel } from './core/parcels';
+import { PARCEL_COLOR, type Parcel } from './core/parcels';
 import { createRenderer, type Backend } from './render/renderer';
 import { AdaptiveQuality, type QualitySetting } from './render/quality';
 import { createPost, rebuildPost } from './render/post';
@@ -58,6 +58,8 @@ export class App {
   readonly quality: AdaptiveQuality;
   readonly world: WorldView;
   presetName: CameraPresetName | null = null;
+  /** Rules screen open: the clock and the van stop. */
+  paused = false;
 
   private readonly vanMesh = new VanMesh();
   private readonly zone = new DeliveryZoneView();
@@ -257,9 +259,9 @@ export class App {
     this.input.update(dt);
     if (this.input.takeRecover() && this.game.phase === 'driving') this.recover();
     if (this.input.takeCycle() && this.game.phase === 'driving') this.cycleTarget();
-    if (this.game.phase === 'ready' && this.input.active && !this.opts.test) this.start();
+    if (this.game.phase === 'ready' && this.input.active && !this.opts.test && !this.paused) this.start();
 
-    if (!this.simPaused) {
+    if (!this.simPaused && !this.paused) {
       this.acc += dt;
       let n = 0;
       while (this.acc >= FIXED_DT && n < 5) {
@@ -270,7 +272,7 @@ export class App {
       if (n === 5) this.acc = 0;
     }
 
-    if (!this.simPaused) this.sceneTime += dt;
+    if (!this.simPaused && !this.paused) this.sceneTime += dt;
     this.world.animateLandmarks(this.sceneTime);
     this.syncVisuals(dt);
     U.time.value = t;
@@ -295,7 +297,10 @@ export class App {
     const target = this.game.target;
     const live = this.game.phase !== 'ended';
     this.zone.place(target?.stop.zone.x ?? 0, target?.stop.y ?? 0, target?.stop.zone.z ?? 0, !!target && live);
-    this.zone.placeOthers(live ? this.game.remaining.filter((q) => q !== target).map((q) => ({ x: q.stop.zone.x, y: q.stop.y, z: q.stop.zone.z })) : []);
+    if (target) this.zone.tint.value.set(PARCEL_COLOR[target.type]);
+    this.zone.placeOthers(
+      live ? this.game.remaining.filter((q) => q !== target).map((q) => ({ x: q.stop.zone.x, y: q.stop.y, z: q.stop.zone.z, color: PARCEL_COLOR[q.type] })) : [],
+    );
     this.zone.progress.value = this.game.handover.progress;
 
     if (!this.presetName) this.chase.update(dt || FIXED_DT, this.tmpV, this.van.heading, this.van.speed);

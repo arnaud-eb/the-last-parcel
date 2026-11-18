@@ -13,8 +13,8 @@ export const SCORING = {
   /** Penalty per hard hit: points per m/s of speed lost, capped. */
   damagePerMs: 3,
   damageCap: 40,
-  /** Rank thresholds, as a share of the load's total base value. */
-  ranks: { onTime: 0.5, hero: 1.0 },
+  /** Rank thresholds, as a share of the best possible score for the day's load (see bestScore). */
+  ranks: { onTime: 0.45, hero: 0.8 },
 };
 
 export type Rank = 'Missed the Sleigh' | 'On Time' | 'Christmas Hero';
@@ -25,6 +25,8 @@ export type Tally = {
   /** Line items, in display order. Zero lines are kept so the tally always has the same shape. */
   lines: { label: string; points: number }[];
   score: number;
+  /** Best possible score for this load: every parcel, every bonus, a full streak, no damage. */
+  best: number;
   rank: Rank;
 };
 
@@ -33,9 +35,21 @@ export function hitPenalty(strength: number): number {
   return Math.min(SCORING.damageCap, Math.round(strength * SCORING.damagePerMs));
 }
 
+/** Every parcel delivered intact and on time with its tip, one long streak, no damage. */
+export function bestScore(parcels: readonly Parcel[]): number {
+  let best = 0;
+  for (const p of parcels) {
+    best += p.value + p.tip;
+    if (p.type === 'express') best += R.expressBonus;
+    if (p.type === 'fragile') best += R.fragileIntactBonus;
+    if (p.type === 'grandma') best += R.grandmaBonus;
+  }
+  for (let i = 1; i < parcels.length; i++) best += Math.min(i, SCORING.streakCap) * SCORING.streakStep;
+  return best;
+}
+
 export function rankFor(score: number, parcels: readonly Parcel[]): Rank {
-  const possible = parcels.reduce((s, p) => s + p.value, 0) || 1;
-  const share = score / possible;
+  const share = score / (bestScore(parcels) || 1);
   if (share >= SCORING.ranks.hero) return 'Christmas Hero';
   if (share >= SCORING.ranks.onTime) return 'On Time';
   return 'Missed the Sleigh';
@@ -85,6 +99,7 @@ export function tally(parcels: readonly Parcel[], damage: number): Tally {
       { label: 'Damage', points: -damage },
     ],
     score,
+    best: bestScore(parcels),
     rank: rankFor(score, parcels),
   };
 }

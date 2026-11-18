@@ -90,6 +90,9 @@ html, body {
   gap: 8px;
   align-items: center;
 }
+.target-card .tc { display: inline-flex; align-items: center; gap: 6px; }
+.picon { display: block; flex: none; }
+.tray-item .icon .picon { margin: 0 auto; }
 .target-card .type { color: var(--ink-dim); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 2px; }
 .target-card .dist { color: var(--amber); font-weight: 800; font-variant-numeric: tabular-nums; }
 
@@ -302,6 +305,36 @@ html, body {
 .tally tfoot td { border-top: 1px solid var(--panel-edge); padding-top: 8px; font-size: 18px; font-weight: 800; }
 .tally tfoot .big { font-size: 34px; color: var(--amber); }
 
+.link {
+  display: block;
+  margin: 10px auto 0;
+  padding: 8px 14px;
+  min-height: 40px;
+  border: 0;
+  background: none;
+  color: var(--ink-dim);
+  font: 600 14px var(--font);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.help { font-size: 22px; font-weight: 900; }
+.tally tr.best td { font-size: 12px; color: var(--ink-dim); font-weight: 600; padding-top: 0; }
+
+.rules-overlay { z-index: 5; }
+.rules { text-align: left; max-width: min(92vw, 620px); max-height: 92vh; overflow-y: auto; touch-action: pan-y; }
+.rules h2 { text-align: center; }
+.rules h3 { margin: 14px 0 4px; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--amber); }
+.rules .lead { color: var(--ink); text-align: center; }
+.rules ul { margin: 0; padding-left: 18px; color: var(--ink-dim); line-height: 1.45; font-size: 14px; }
+.rules ul li { margin: 3px 0; }
+.rules b { color: var(--ink); }
+.rules ul.types { list-style: none; padding: 0; }
+.rules ul.types li { display: flex; gap: 10px; align-items: center; }
+.rules .btn { display: block; margin: 14px auto 0; }
+.touch-only { display: none; }
+@media (pointer: coarse) { .rules .touch-only { display: list-item; } .rules .keys-only { display: none; } }
+
 .rotate {
   display: none;
   position: fixed;
@@ -324,6 +357,36 @@ html, body {
 .tally tr.zero { color: var(--ink-dim); opacity: 0.6; }
 .tally tfoot td { border-top: 1px solid var(--panel-edge); padding-top: 8px; font-size: 18px; font-weight: 800; }
 .tally tfoot .big { font-size: 34px; color: var(--amber); }
+
+.link {
+  display: block;
+  margin: 10px auto 0;
+  padding: 8px 14px;
+  min-height: 40px;
+  border: 0;
+  background: none;
+  color: var(--ink-dim);
+  font: 600 14px var(--font);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.help { font-size: 22px; font-weight: 900; }
+.tally tr.best td { font-size: 12px; color: var(--ink-dim); font-weight: 600; padding-top: 0; }
+
+.rules-overlay { z-index: 5; }
+.rules { text-align: left; max-width: min(92vw, 620px); max-height: 92vh; overflow-y: auto; touch-action: pan-y; }
+.rules h2 { text-align: center; }
+.rules h3 { margin: 14px 0 4px; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--amber); }
+.rules .lead { color: var(--ink); text-align: center; }
+.rules ul { margin: 0; padding-left: 18px; color: var(--ink-dim); line-height: 1.45; font-size: 14px; }
+.rules ul li { margin: 3px 0; }
+.rules b { color: var(--ink); }
+.rules ul.types { list-style: none; padding: 0; }
+.rules ul.types li { display: flex; gap: 10px; align-items: center; }
+.rules .btn { display: block; margin: 14px auto 0; }
+.touch-only { display: none; }
+@media (pointer: coarse) { .rules .touch-only { display: list-item; } .rules .keys-only { display: none; } }
 
 .rotate { display: grid; } }
 
@@ -369,6 +432,12 @@ html, body {
   .tally tfoot td { font-size: 14px; padding-top: 4px; }
   .tally tfoot .big { font-size: 22px; }
   .tally .btn { min-height: 44px; margin-top: 6px; }
+  .link { margin-top: 2px; min-height: 32px; padding: 4px 10px; font-size: 12px; }
+  .rules { padding: 12px 18px; }
+  .rules h2 { font-size: 20px; }
+  .rules h3 { margin: 8px 0 2px; font-size: 11px; }
+  .rules ul, .rules p { font-size: 12px; line-height: 1.35; }
+  .rules .btn { min-height: 44px; }
   .card { padding: 16px 22px; }
   .card h1 { font-size: 30px; }
   .card .big { font-size: 34px; }

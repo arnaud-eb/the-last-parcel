@@ -61,6 +61,15 @@ export const PARCEL_LABEL: Record<ParcelType, string> = {
   grandma: 'For Grandma',
 };
 
+/** One colour per type, shared by the rings in the street, the minimap, the tray and the rules. */
+export const PARCEL_COLOR: Record<ParcelType, string> = {
+  standard: '#ffc45e',
+  express: '#5fd0ff',
+  fragile: '#ff86d6',
+  heavy: '#a6e36b',
+  grandma: '#ff6b5b',
+};
+
 /** Value of a parcel now, after any damage. */
 export function parcelValue(p: Parcel): number {
   if (p.type !== 'fragile' || p.hits === 0) return p.value;

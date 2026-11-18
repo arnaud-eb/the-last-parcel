@@ -241,3 +241,16 @@ test('touch controls are shown on phones and drive the van', async ({ page, isMo
   const z1 = await page.evaluate(() => window.__game.state.van.z);
   expect(z1).toBeLessThan(z0 - 1);
 });
+
+test('the rules open from the ? button, pause the game, and close back to driving', async ({ page }) => {
+  await openGame(page);
+  await page.evaluate(() => window.__game.start());
+  await frames(page, 3);
+  await page.getByTestId('help').click();
+  await expect(page.getByTestId('rules')).toContainText('Stop inside any ring');
+  await expect(page.getByTestId('rules')).toContainText('For Grandma');
+  expect(await page.evaluate(() => (window.__game.app as unknown as { paused: boolean }).paused)).toBe(true);
+  await page.getByTestId('rules-close').click();
+  await expect(page.getByTestId('rules')).toHaveCount(0);
+  expect(await page.evaluate(() => (window.__game.app as unknown as { paused: boolean }).paused)).toBe(false);
+});

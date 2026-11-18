@@ -3,7 +3,18 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { App, AppEvent, HudSnapshot } from '../app';
 import { PARCEL_LABEL, PARCEL_RULES, parcelValue, type Parcel } from '../core/parcels';
 import { Minimap } from './Minimap';
-import { ParcelTray, TYPE_ICON } from './ParcelTray';
+import { ParcelTray } from './ParcelTray';
+import { ParcelIcon } from './ParcelIcon';
+import { Rules } from './Rules';
+
+const RULES_SEEN = 'tlp.rulesSeen';
+const rulesSeen = () => {
+  try {
+    return localStorage.getItem(RULES_SEEN) === '1';
+  } catch {
+    return false;
+  }
+};
 
 type Toast = { id: number; from?: string; text: string };
 
@@ -23,6 +34,25 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
   const [hud, setHud] = useState<HudSnapshot | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [trayOpen, setTrayOpen] = useState(false);
+  /** Rules open, and what closing them does. */
+  const [rules, setRules] = useState<null | 'start' | 'resume'>(null);
+  const openRules = (mode: 'start' | 'resume') => {
+    app.paused = true;
+    Object.assign(app.input.touch, { steer: 0, gas: false, brake: false });
+    setRules(mode);
+  };
+  const closeRules = () => {
+    try {
+      localStorage.setItem(RULES_SEEN, '1');
+    } catch {
+      /* private mode: show them again next time */
+    }
+    app.paused = false;
+    if (rules === 'start' && app.game.phase === 'ready') app.start();
+    setRules(null);
+  };
+  // First shift on this device: the rules come before the clock starts.
+  const startShift = () => (rulesSeen() ? app.start() : openRules('start'));
   const markerRef = useRef<HTMLDivElement>(null);
   const last = useRef('');
   const nextId = useRef(1);
@@ -92,6 +122,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
           </button>
           <div class="panel stat"><b data-testid="score">{hud.score}</b><span>score</span></div>
           {hud.phase === 'driving' && (
+            <button class="panel reset help" data-testid="help" aria-label="How to play (pauses the game)" title="How to play" onClick={() => openRules('resume')}>?</button>
+          )}
+          {hud.phase === 'driving' && (
             <button class="panel reset" data-testid="reset" aria-label="Put the van back on the road" title="Back on the road (R)" onClick={() => app.recover()}>↺</button>
           )}
         </div>
@@ -102,7 +135,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
 
       {hud.target && hud.phase === 'driving' && (
         <div class="panel target-card" data-testid="target">
-          <span>{TYPE_ICON[hud.target.type]} <span class="type">{PARCEL_LABEL[hud.target.type]}</span> {hud.target.address}</span>
+          <span class="tc"><ParcelIcon type={hud.target.type} size={18} /> <span class="type">{PARCEL_LABEL[hud.target.type]}</span> {hud.target.address}</span>
           <span class="dist">{Math.round(hud.target.dist)} m</span>
         </div>
       )}
@@ -133,18 +166,20 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       <TouchControls app={app} />
       {hud.phase === 'driving' && <div class="panel keys-hint">↑ or W: go · ↓ or S: brake, then reverse · ← → or A D: steer · Tab: change stop · R: back on the road</div>}
 
-      {hud.phase === 'ready' && !app.opts.test && (
-        <div class="overlay" onPointerDown={() => app.start()}>
+      {hud.phase === 'ready' && !app.opts.test && !rules && (
+        <div class="overlay">
           <div class="panel card">
             <p>December 24 · 4:00pm · Luxembourg</p>
             <h1>The Last Parcel</h1>
             <p>The last Kuerier van of the year. Every present must arrive before Christmas Eve dinner at 6pm.</p>
-            <button class="btn" onClick={() => app.start()}>Start shift</button>
+            <button class="btn" onClick={startShift}>Start shift</button>
+            <button class="link" data-testid="how-to-play" onClick={() => openRules('resume')}>How to play</button>
           </div>
         </div>
       )}
 
-      {hud.phase === 'ended' && <TallyCard app={app} />}
+      {hud.phase === 'ended' && !rules && <TallyCard app={app} onRules={() => openRules('resume')} />}
+      {rules && <Rules onClose={closeRules} closeLabel={rules === 'start' ? 'Start shift' : hud.phase === 'driving' ? 'Back to driving' : 'Got it'} />}
 
       {debug && (
         <div class="panel debug" data-testid="debug">
@@ -172,7 +207,7 @@ const RANK_LINE: Record<string, string> = {
   'Christmas Hero': 'The whole old town is talking about the Kuerier van.',
 };
 
-function TallyCard({ app }: { app: App }) {
+function TallyCard({ app, onRules }: { app: App; onRules: () => void }) {
   const g = app.game;
   const t = g.tally;
   const all = t.delivered === t.total;
@@ -193,10 +228,12 @@ function TallyCard({ app }: { app: App }) {
           </tbody>
           <tfoot>
             <tr><td>Score</td><td class="big" data-testid="final-score">{t.score}</td></tr>
+            <tr class="best"><td>Best possible today</td><td>{t.best}</td></tr>
           </tfoot>
         </table>
         <p>{all ? 'Every parcel under a tree.' : `${t.total - t.delivered} of ${t.total} parcels won't be under the tree tonight.`} <b>Schéi Chrëschtdeeg!</b></p>
         <button class="btn" onClick={() => { app.restart(); app.start(); }}>Drive again</button>
+        <button class="link" onClick={onRules}>How scoring works</button>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PARCEL_RULES, parcelValue, type Parcel, type ParcelType } from '../../src/core/parcels';
-import { rankFor, streakBonus, tally } from '../../src/core/scoring';
+import { bestScore, rankFor, streakBonus, tally } from '../../src/core/scoring';
 
 let n = 0;
 function parcel(type: ParcelType, value: number, deliveredAt: number | null, extra: Partial<Parcel> = {}): Parcel {
@@ -53,10 +53,22 @@ describe('scoring', () => {
     expect(tally([parcel('standard', 50, 10)], 500).score).toBe(0);
   });
 
-  it('ranks by share of the load value', () => {
-    const load = [parcel('standard', 50, null), parcel('standard', 50, null)];
-    expect(rankFor(45, load)).toBe('Missed the Sleigh');
-    expect(rankFor(50, load)).toBe('On Time');
-    expect(rankFor(100, load)).toBe('Christmas Hero');
+  it('ranks by share of the best possible score for the load', () => {
+    // Best: 50 + 50 values, +10 tip, +50 express bonus, +10 streak = 170.
+    const load = [parcel('standard', 50, null, { tip: 10 }), parcel('express', 50, null)];
+    expect(bestScore(load)).toBe(170);
+    expect(rankFor(76, load)).toBe('Missed the Sleigh');
+    expect(rankFor(77, load)).toBe('On Time');
+    expect(rankFor(135, load)).toBe('On Time');
+    expect(rankFor(136, load)).toBe('Christmas Hero');
+  });
+
+  it('the play-tested near-miss (15 of 16, 86 damage, 1625 points) is On Time, a clean full run is Hero', () => {
+    // A load like that run's: 16 parcels of ~72, 3 express, 3 fragile, 2 for Grandma, 10 tippers.
+    const load: Parcel[] = [];
+    for (let i = 0; i < 16; i++)
+      load.push(parcel(i < 3 ? 'express' : i < 6 ? 'fragile' : i < 8 ? 'grandma' : 'standard', 72, i * 8, { tip: i < 10 ? 17 : 0 }));
+    expect(rankFor(1625, load)).toBe('On Time');
+    expect(tally(load, 0).rank).toBe('Christmas Hero');
   });
 });
