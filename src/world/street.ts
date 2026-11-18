@@ -155,7 +155,11 @@ function addTerrain(snow: Chunked): void {
 
 // ---------- bridge, parapets ----------
 
-/** Pont Adolphe: deck, a great stone arch over the Pétrusse, and spandrel piers. */
+/**
+ * Pont Adolphe: deck, the great stone arch over the Pétrusse, and above it the
+ * open spandrels: piers joined by small arches on both faces. The stone is
+ * floodlit warm from below, as at night in the real city.
+ */
 function addBridge(walls: GeoBuilder, roofs: GeoBuilder): void {
   const r = ROADS.find((x) => x.bridge)!;
   const [ax, , az] = r.points[0]!;
@@ -166,40 +170,76 @@ function addBridge(walls: GeoBuilder, roofs: GeoBuilder): void {
   const mz = (az + bz) / 2;
   const m = new THREE.Matrix4().makeRotationY(rot).setPosition(mx, 0, mz);
   const P = (x: number, y: number, z: number) => v3(x, y, z).applyMatrix4(m);
+  const N = (x: number, y: number, z: number) => P(x, y, z).sub(P(0, 0, 0));
   const hw = r.halfWidth + 0.7;
+  // Floodlit plain stone (aWall kind 1 = plain; aFacade.w 2 = floodlit).
+  const ex = [1, 99, 0.31, 1, 0, -1, -1, 2];
   // Deck slab under the road.
-  box(walls, roofs, P, 0, 0, hw, len / 2 + 2, -1.4, -0.02, SANDSTONE, 0.31);
-  // Arch: springs from the valley sides, crown just under the deck.
+  box(walls, roofs, P, 0, 0, hw, len / 2 + 2, -1.4, -0.02, SANDSTONE, 0.31, true);
+
+  /** A stone arch from z0 to z1: `y(t)` is the intrados line, `thick` the ring depth, both faces and the soffit. */
+  const arch = (za: number, zb: number, y: (t: number) => number, thick: number, steps: number, x0 = -hw, x1 = hw) => {
+    for (let i = 0; i < steps; i++) {
+      const t0 = i / steps;
+      const t1 = (i + 1) / steps;
+      const z0 = za + (zb - za) * t0;
+      const z1 = za + (zb - za) * t1;
+      const y0 = y(t0);
+      const y1 = y(t1);
+      walls.quad(P(x0, y0 + thick, z0), P(x1, y0 + thick, z0), P(x1, y1 + thick, z1), P(x0, y1 + thick, z1), [0, y0, 1, y0, 1, y1, 0, y1], SANDSTONE, ex, N(0, 1, 0));
+      walls.quad(P(x0, y0, z0), P(x0, y1, z1), P(x1, y1, z1), P(x1, y0, z0), [0, y0, 0, y1, 1, y1, 1, y0], SANDSTONE, ex, N(0, -1, 0));
+      for (const [x, s] of [[x0, -1], [x1, 1]] as const) {
+        walls.quad(P(x, y0, z0), P(x, y0 + thick, z0), P(x, y1 + thick, z1), P(x, y1, z1), [z0, y0, z0, y0 + thick, z1, y1 + thick, z1, y1], SANDSTONE, ex, N(s, 0, 0));
+      }
+    }
+  };
+
+  // The great arch: springs from the valley sides, crown just under the deck.
   const { zNorth, zSouth } = VALLEYS.petrusse;
   const span = zSouth - zNorth - 10;
   const top = -2.2;
   const thick = 3.2;
-  const steps = 40;
   const archY = (t: number) => VALLEY_Y + 2 + (top - VALLEY_Y - 2) * Math.sin(Math.PI * t);
-  for (let i = 0; i < steps; i++) {
-    const t0 = i / steps;
-    const t1 = (i + 1) / steps;
-    const z0 = -span / 2 + span * t0;
-    const z1 = -span / 2 + span * t1;
-    const y0 = archY(t0);
-    const y1 = archY(t1);
-    const ex = [1, 99, 0.31, 1, 0, -1, -1, 0];
-    // Extrados (top), intrados (underside), both faces.
-    walls.quad(P(-hw, y0, z0), P(hw, y0, z0), P(hw, y1, z1), P(-hw, y1, z1), [0, y0, 1, y0, 1, y1, 0, y1], SANDSTONE, ex, P(0, 1, 0).sub(P(0, 0, 0)));
-    walls.quad(P(-hw, y0 - thick, z0), P(-hw, y1 - thick, z1), P(hw, y1 - thick, z1), P(hw, y0 - thick, z0), [0, y0, 0, y1, 1, y1, 1, y0], SANDSTONE, ex, P(0, -1, 0).sub(P(0, 0, 0)));
-    for (const s of [-1, 1]) {
-      walls.quad(P(s * hw, y0 - thick, z0), P(s * hw, y0, z0), P(s * hw, y1, z1), P(s * hw, y1 - thick, z1), [z0, y0 - thick, z0, y0, z1, y1, z1, y1 - thick], SANDSTONE, ex, P(s, 0, 0).sub(P(0, 0, 0)));
-    }
-  }
-  // Spandrel piers between arch and deck.
+  arch(-span / 2, span / 2, (t) => archY(t) - thick, thick, 40);
+
+  // Open spandrels: piers standing on the arch, joined under the deck by small round arches.
+  const piers: number[] = [];
   for (let z = -span / 2 + 6; z < span / 2 - 4; z += 7) {
     const t = (z + span / 2) / span;
     const y0 = archY(t) - 0.5;
     if (-1.4 - y0 < 1.5) continue;
-    box(walls, roofs, P, 0, z, hw - 0.4, 0.9, y0, -1.4, SANDSTONE, 0.31);
+    box(walls, roofs, P, 0, z, hw - 0.4, 0.9, y0, -1.4, SANDSTONE, 0.31, true);
+    piers.push(z);
   }
+  for (let i = 0; i + 1 < piers.length; i++) {
+    const za = piers[i]! + 0.9;
+    const zb = piers[i + 1]! - 0.9;
+    const rise = Math.min(2.4, (zb - za) / 2);
+    const spring = -1.4 - rise - 0.6;
+    // Only where the gap under the deck is tall enough to read as an arch.
+    const t = ((za + zb) / 2 + span / 2) / span;
+    if (spring - archY(t) < 1.2) continue;
+    // Fill between the round arch and the deck: both faces and the soffit underneath.
+    const curve = (u: number) => spring + rise * Math.sqrt(Math.max(0, 1 - (2 * u - 1) ** 2));
+    const x0 = -hw + 0.4;
+    const x1 = hw - 0.4;
+    const steps = 12;
+    for (let k = 0; k < steps; k++) {
+      const u0 = k / steps;
+      const u1 = (k + 1) / steps;
+      const z0 = za + (zb - za) * u0;
+      const z1 = za + (zb - za) * u1;
+      const y0 = curve(u0);
+      const y1 = curve(u1);
+      walls.quad(P(x0, y0, z0), P(x0, y1, z1), P(x1, y1, z1), P(x1, y0, z0), [0, y0, 0, y1, 1, y1, 1, y0], SANDSTONE, ex, N(0, -1, 0));
+      for (const [x, sd] of [[x0, -1], [x1, 1]] as const) {
+        walls.quad(P(x, y0, z0), P(x, -1.4, z0), P(x, -1.4, z1), P(x, y1, z1), [z0, y0, z0, -1.4, z1, -1.4, z1, y1], SANDSTONE, ex, N(sd, 0, 0));
+      }
+    }
+  }
+
   // Abutment piers down to the valley floor at both ends.
-  for (const s of [-1, 1]) box(walls, roofs, P, 0, s * (span / 2 + 2), hw, 4, VALLEY_Y - 1, -1.4, SANDSTONE, 0.31);
+  for (const s of [-1, 1]) box(walls, roofs, P, 0, s * (span / 2 + 2), hw, 4, VALLEY_Y - 1, -1.4, SANDSTONE, 0.31, true);
   // Parapets on the deck, over the valley only (rim to rim) so the junctions at both ends stay open.
   const plen = zSouth - zNorth + 4;
   for (const s of [-1, 1]) {

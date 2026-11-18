@@ -4,7 +4,7 @@
  * collider); the silhouette pieces that make it recognisable are built here.
  */
 import * as THREE from 'three/webgpu';
-import { attribute, float, mix, normalWorld, positionWorld, smoothstep, vec3, vertexColor } from 'three/tsl';
+import { abs, atan, attribute, float, floor, fract, hash, length, mix, normalWorld, positionWorld, pow, smoothstep, step, uv, vec2, vec3, vertexColor } from 'three/tsl';
 import { GeoBuilder } from './geo';
 import { box, wallBuilders, wallMeshes } from './buildings';
 import type { Landmark } from './town';
@@ -65,6 +65,59 @@ class Glows {
   }
 }
 
+/**
+ * Stained glass, lit from inside: lead-lined mosaic of blue, ruby and gold.
+ * aShape 0 = pointed Gothic lancet (two lights and a mullion), 1 = rose window.
+ */
+function stainedMat(): THREE.MeshBasicNodeMaterial {
+  const m = new THREE.MeshBasicNodeMaterial();
+  const p = uv() as N;
+  const shape = attribute('aShape', 'float') as N;
+  const tint = attribute('aTint', 'vec3') as N;
+  // Lancet: straight sides, pointed top from 78% up.
+  const top = smoothstep(0.78, 1.0, p.y);
+  const halfW = float(0.5).mul(pow(float(1).sub(top), 0.6));
+  const lancet = step(abs(p.x.sub(0.5)), halfW.sub(0.02));
+  const mullion = step(0.035, abs(p.x.sub(0.5)));
+  const lCell = floor(vec2(p.x.mul(4), p.y.mul(11)));
+  const lLead = step(0.1, fract(p.x.mul(4))).mul(step(0.07, fract(p.y.mul(11))));
+  // Rose: circle with radial petals and rings.
+  const q = p.sub(0.5).mul(2);
+  const r = length(q);
+  const ang = atan(q.y, q.x).div(6.2832).add(0.5);
+  const rose = step(r, 0.97);
+  const rCell = floor(vec2(ang.mul(16), r.mul(4)));
+  const rLead = step(0.08, fract(ang.mul(16))).mul(step(0.1, fract(r.mul(4)))).mul(step(0.1, r));
+  const isRose = step(0.5, shape);
+  const cell = mix(lCell, rCell, isRose);
+  const lead = mix(lLead.mul(mullion), rLead, isRose);
+  const mask = mix(lancet, rose, isRose);
+  const h = hash(cell.x.add(cell.y.mul(37.1)));
+  const col = mix(mix(vec3(0.12, 0.25, 1.0), vec3(1.0, 0.12, 0.16), step(0.55, h)), vec3(1.0, 0.72, 0.22), step(0.85, h));
+  m.colorNode = col.mul(lead.mul(0.85).add(0.15)).mul(tint);
+  m.opacityNode = mask;
+  m.alphaTest = 0.5;
+  return m;
+}
+
+/** Instanced stained-glass windows (cathedral lancets, rose windows). */
+class StainedGlass {
+  private readonly items: { m: THREE.Matrix4; shape: number; tint: number }[] = [];
+  add(m: THREE.Matrix4, shape: 0 | 1, tint = 1.6): void {
+    this.items.push({ m, shape, tint });
+  }
+  build(): THREE.InstancedMesh {
+    const g = new THREE.PlaneGeometry(1, 1);
+    g.setAttribute('aShape', new THREE.InstancedBufferAttribute(new Float32Array(this.items.map((i) => i.shape)), 1));
+    g.setAttribute('aTint', new THREE.InstancedBufferAttribute(new Float32Array(this.items.flatMap((i) => [i.tint, i.tint, i.tint])), 3));
+    const mesh = new THREE.InstancedMesh(g, stainedMat(), this.items.length);
+    this.items.forEach((it, i) => mesh.setMatrixAt(i, it.m));
+    mesh.computeBoundingSphere();
+    mesh.name = 'stained-glass';
+    return mesh;
+  }
+}
+
 const v3 = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 
 /** Local → world transform helper for a landmark. */
@@ -107,6 +160,7 @@ export function buildLandmarkExtras(): THREE.Group {
   const flood = new GeoBuilder(); // floodlit towers and spires
   const props = new GeoBuilder(); // vertex-coloured props (lions, sentry boxes, wheel frame)
   const glows = new Glows();
+  const stained = new StainedGlass();
 
   // --- Cathedral: two dark slate needle spires on the front towers, a green copper spire over the crossing.
   {
@@ -125,11 +179,17 @@ export function buildLandmarkExtras(): THREE.Group {
     }
     column(flood, P, 0, 8, 3.2, 20, 27, 8, COPPER);
     needle(flood, P, 0, 8, 3.2, 27, 60, 8, COPPER);
-    // Tall stained-glass lancets along both sides of the nave, and a rose window at the front.
+    // Tall stained-glass lancets along both sides of the nave between stepped buttresses with pinnacles,
+    // and a rose window over the front door.
     for (const sx of [-1, 1]) {
-      for (let z = front + 10; z < 24; z += 6) glows.add(M(sx * 12.02, 8, z, sx * Math.PI / 2, [1.6, 7, 1]), [1.4, 0.7, 0.35]);
+      for (let z = front + 10; z < 24; z += 6) stained.add(M(sx * 12.03, 8.2, z, sx * Math.PI / 2, [1.9, 7.6, 1]), 0);
+      for (let z = front + 7; z < 27; z += 6) {
+        box(flood, flood, P, sx * 12.6, z, 0.6, 0.45, 0, 10, SANDSTONE, 0.4);
+        box(flood, flood, P, sx * 12.4, z, 0.4, 0.38, 10, 13.5, SANDSTONE, 0.4);
+        needle(flood, P, sx * 12.4, z, 0.42, 13.5, 16.5, 4, SANDSTONE);
+      }
     }
-    glows.add(M(0, 11, front - 0.02, Math.PI, [4.5, 4.5, 1]), [1.6, 0.8, 0.4]);
+    stained.add(M(0, 11, front - 0.03, Math.PI, [4.6, 4.6, 1]), 1, 1.8);
     glows.add(M(0, 2.8, front - 0.02, Math.PI, [3, 5, 1]), [2.0, 1.0, 0.45]);
   }
 
@@ -228,8 +288,25 @@ export function buildLandmarkExtras(): THREE.Group {
       const r = 0.95 - i * 0.07;
       box(flood, flood, P, 0, 0, r, r, 3.2 + i * 3, 3.2 + (i + 1) * 3, [0.64, 0.6, 0.54], 0.5);
     }
-    glows.add(M(0, 22.6, 0, 0, [0.7, 1.9, 0.7]), [3.2, 2.1, 0.6]);
-    glows.add(M(0, 24.2, 0, 0, [1.4, 0.18, 0.18]), [3.2, 2.1, 0.6]); // arms raising the wreath
+    // The gilded figure on top, arms raised holding the laurel wreath out over the square.
+    const GOLD: Rgb = [1.0, 0.74, 0.26];
+    const top = 3.2 + 6 * 3;
+    const at = (x: number, y: number, z: number, rx = 0, rz = 0) => new THREE.Matrix4().multiplyMatrices(M(x, y, z), new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(rx, 0, rz)));
+    flood.merge(new THREE.CylinderGeometry(0.62, 0.62, 0.25, 10), at(0, top + 0.12, 0), GOLD); // gilded base
+    flood.merge(new THREE.ConeGeometry(0.42, 1.7, 10), at(0, top + 1.1, 0), GOLD); // robe
+    flood.merge(new THREE.CylinderGeometry(0.15, 0.24, 0.6, 8), at(0, top + 2.05, 0), GOLD); // torso
+    flood.merge(new THREE.SphereGeometry(0.17, 10, 8), at(0, top + 2.52, -0.04), GOLD); // head
+    // Both arms reach up and forward to the wreath held high over the square (local -Z is the front).
+    const wreath = v3(0, top + 3.25, -0.45);
+    for (const s of [-1, 1]) {
+      const shoulder = v3(s * 0.2, top + 2.3, 0);
+      const hand = v3(s * 0.26, wreath.y - 0.3, wreath.z);
+      const dir = hand.clone().sub(shoulder);
+      const q = new THREE.Quaternion().setFromUnitVectors(v3(0, 1, 0), dir.clone().normalize());
+      const mid = shoulder.clone().addScaledVector(dir, 0.5);
+      flood.merge(new THREE.CylinderGeometry(0.055, 0.065, dir.length(), 6), new THREE.Matrix4().multiplyMatrices(M(mid.x, mid.y, mid.z), new THREE.Matrix4().makeRotationFromQuaternion(q)), GOLD);
+    }
+    flood.merge(new THREE.TorusGeometry(0.34, 0.065, 6, 18), at(wreath.x, wreath.y, wreath.z), GOLD); // wreath
   }
 
   // --- Ferris wheel at Place de la Constitution (turns slowly, see FerrisWheel).
@@ -238,9 +315,15 @@ export function buildLandmarkExtras(): THREE.Group {
   // --- Neumünster Abbey: a small bell tower with a slate spire.
   {
     const l = lm('neumunster');
-    const { P } = frame(l);
-    column(stone.walls, P, 12, 0, 2.2, 9, 17, 4, GREY_STONE);
-    needle(stone.roofs, P, 12, 0, 2.6, 17, 25, 4, SLATE);
+    const { P, M } = frame(l);
+    column(flood, P, 12, 0, 2.2, 9, 17, 4, GREY_STONE);
+    needle(flood, P, 12, 0, 2.6, 17, 25, 4, SLATE);
+    // Lit belfry openings and the abbey church's tall windows facing the river path.
+    for (const side of [0, 1, 2, 3]) {
+      const a = (side * Math.PI) / 2;
+      glows.add(M(12 + Math.sin(a) * 2.22, 14.5, Math.cos(a) * 2.22, a, [0.8, 1.8, 1]), [1.2, 0.7, 0.3]);
+    }
+    for (const x of [4, 7, 17, 20]) stained.add(M(x, 4.2, -5.53, Math.PI, [1.3, 4.2, 1]), 0, 1.3);
   }
 
   const group = new THREE.Group();
@@ -252,6 +335,7 @@ export function buildLandmarkExtras(): THREE.Group {
   propMat.emissiveNode = lampLight(positionWorld, normalWorld, vertexColor().rgb, float(0.3), float(20));
   group.add(Object.assign(new THREE.Mesh(props.build(), propMat), { name: 'landmark-props' }));
   group.add(glows.build(new THREE.PlaneGeometry(1, 1), 'landmark-glows'));
+  group.add(stained.build());
   group.add(wheel.group, buildTree(lm('tree')));
   group.userData.update = (time: number) => wheel.update(time);
   return group;

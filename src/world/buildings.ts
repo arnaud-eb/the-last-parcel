@@ -196,6 +196,8 @@ export function box(
   y1: number,
   col: readonly number[],
   seed: number,
+  /** Warm floodlight wash on these walls (bridges, monuments). */
+  floodlit = false,
 ): void {
   const cs: [number, number][] = [[cx + hx, cz - hz], [cx - hx, cz - hz], [cx - hx, cz + hz], [cx + hx, cz + hz]];
   for (let i = 0; i < 4; i++) {
@@ -205,7 +207,7 @@ export function box(
     const a = P(ax, y0, az);
     const b = P(bx, y0, bz);
     const h = y1 - y0;
-    walls.quad(a, b, b.clone().addScaledVector(UP, h), a.clone().addScaledVector(UP, h), [0, y0, len, y0, len, y1, 0, y1], col, [len, y1, seed, 1]);
+    walls.quad(a, b, b.clone().addScaledVector(UP, h), a.clone().addScaledVector(UP, h), [0, y0, len, y0, len, y1, 0, y1], col, floodlit ? [len, y1, seed, 1, 0, -1, -1, 2] : [len, y1, seed, 1]);
   }
   const t = y1 + 0.12;
   const e = 0.06;
