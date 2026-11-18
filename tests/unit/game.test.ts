@@ -117,22 +117,33 @@ describe('the day\'s load', () => {
 });
 
 describe('stop picker', () => {
-  it('targets the nearest parcel by default, and the next nearest after each delivery', () => {
+  it('aims at the first stop of a planned route, and follows the plan after each delivery', () => {
     const g = new Game({ seed: 'n', stops: town, start: { x: 0, z: 0 } });
-    const d = (p: { stop: Stop }) => Math.hypot(p.stop.zone.x, p.stop.zone.z);
-    const nearest = Math.min(...g.parcels.map(d));
-    expect(d(g.target!)).toBe(nearest);
+    expect(g.plan).toHaveLength(g.parcels.length);
+    expect(g.targetId).toBe(g.plan[0]);
     g.start();
+    const second = g.plan[1];
     const z = g.target!.stop.zone;
     stepFor(g, 1.2, { x: z.x, z: z.z, speed: 0 });
-    expect(g.target!.delivered).toBe(false);
-    const fromHere = (p: { stop: Stop }) => Math.hypot(p.stop.zone.x - z.x, p.stop.zone.z - z.z);
-    expect(fromHere(g.target!)).toBe(Math.min(...g.remaining.map(fromHere)));
+    expect(g.parcelsLeft).toBe(g.parcels.length - 1);
+    expect(g.targetId).toBe(second);
+  });
+
+  it('plans the upper town first and Grund, down the cliff, last', () => {
+    // Like driving distances: getting between the upper town and Grund means the switchbacks.
+    const climb = (fy: number | undefined, sy: number) => ((fy ?? 0) === sy ? 0 : 250);
+    const distance = (f: { x: number; z: number; y?: number }, ss: readonly Stop[]) => ss.map((s) => Math.hypot(s.zone.x - f.x, s.zone.z - f.z) + climb(f.y, s.y));
+    for (const seed of ['a', 'b', 'c', '2026-12-24']) {
+      const g = new Game({ seed, stops: town, start: { x: 0, z: 0 }, distance });
+      const districts = g.plan.map((id) => g.parcels.find((p) => p.id === id)!.stop.district);
+      const firstGrund = districts.indexOf('grund');
+      expect(districts.slice(firstGrund).every((d) => d === 'grund'), districts.join()).toBe(true);
+    }
   });
 
   it('keeps the picked stop as target, and uses the supplied driving distance', () => {
     // A distance function that prefers the stop farthest away in a straight line.
-    const g = new Game({ seed: 'n', stops: town, start: { x: 0, z: 0 }, distance: (x, z, ss) => ss.map((s) => -Math.hypot(s.zone.x - x, s.zone.z - z)) });
+    const g = new Game({ seed: 'n', stops: town, start: { x: 0, z: 0 }, distance: (f, ss) => ss.map((s) => -Math.hypot(s.zone.x - f.x, s.zone.z - f.z)) });
     const far = Math.max(...g.parcels.map((p) => Math.hypot(p.stop.zone.x, p.stop.zone.z)));
     expect(Math.hypot(g.target!.stop.zone.x, g.target!.stop.zone.z)).toBe(far);
     const pick = g.parcels.find((p) => p.id !== g.targetId)!;

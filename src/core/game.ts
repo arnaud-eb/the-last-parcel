@@ -2,6 +2,7 @@ import { ShiftClock } from './clock';
 import { Handover, isInZone, type Zone } from './handover';
 import { generateParcels, PARCEL_RULES, type Parcel, type Stop } from './parcels';
 import { createRng } from './rng';
+import { planRoute } from './route';
 import { hitPenalty, SCORING, tally, type Tally } from './scoring';
 
 export type Phase = 'ready' | 'driving' | 'ended';
@@ -15,8 +16,12 @@ export type GameEvent =
 
 export type VanSample = { x: number; z: number; speed: number };
 
-/** Driving distance from (x, z) to each stop, in the same order. Straight line when not given. */
-export type DistanceFn = (x: number, z: number, stops: readonly Stop[]) => number[];
+/**
+ * Driving distance from a point to each stop, in the same order. `from.y` is the
+ * ground height there, or undefined for the van (the app knows its height).
+ * Straight line when not given.
+ */
+export type DistanceFn = (from: { x: number; z: number; y?: number }, stops: readonly Stop[]) => number[];
 
 export type GameOptions = {
   seed: string;
@@ -34,7 +39,7 @@ const MIN_FROM_DEPOT = 60;
 /** Seconds within which hit samples count as the same crash. */
 const HIT_MERGE = 0.6;
 
-const straight: DistanceFn = (x, z, stops) => stops.map((s) => Math.hypot(s.zone.x - x, s.zone.z - z));
+const straight: DistanceFn = (f, stops) => stops.map((s) => Math.hypot(s.zone.x - f.x, s.zone.z - f.z));
 
 /** Gameplay state. Pure logic: no three.js, no DOM. */
 export class Game {
@@ -45,6 +50,10 @@ export class Game {
   targetId: string | null = null;
   /** True until the player picks a stop; then the target stays theirs until it's delivered. */
   autoTarget = true;
+  /** Suggested order for the parcels left (ids); the default target is its first. */
+  plan: string[] = [];
+  /** Driving distances between the day's stops, by parcel id, computed once per shift. */
+  private between = new Map<string, Map<string, number>>();
   /** Damage penalty points so far. */
   damage = 0;
   seed: string;
@@ -75,6 +84,13 @@ export class Game {
     this.van = { ...(this.opts.start ?? { x: 0, z: 0 }) };
     this.autoTarget = true;
     this.targetId = null;
+    this.between.clear();
+    const dist = this.opts.distance ?? straight;
+    const all = this.parcels.map((p) => p.stop);
+    for (const p of this.parcels) {
+      const row = dist({ x: p.stop.zone.x, z: p.stop.zone.z, y: p.stop.y }, all);
+      this.between.set(p.id, new Map(this.parcels.map((q, i) => [q.id, row[i]!])));
+    }
     this.retarget();
   }
 
@@ -118,17 +134,18 @@ export class Game {
     return true;
   }
 
-  /** Point at the nearest undelivered parcel (by driving distance when the app supplies it). */
+  /** Re-plan the order of the parcels left from where the van is, and aim at the first. */
   retarget(): void {
     const left = this.remaining;
     if (!left.length) {
+      this.plan = [];
       this.targetId = null;
       return;
     }
-    const d = (this.opts.distance ?? straight)(this.van.x, this.van.z, left.map((p) => p.stop));
-    let best = 0;
-    for (let i = 1; i < left.length; i++) if (d[i]! < d[best]!) best = i;
-    this.targetId = left[best]!.id;
+    const fromVan = (this.opts.distance ?? straight)({ x: this.van.x, z: this.van.z }, left.map((p) => p.stop));
+    const between = left.map((a) => left.map((b) => this.between.get(a.id)?.get(b.id) ?? Infinity));
+    this.plan = planRoute(fromVan, between).map((i) => left[i]!.id);
+    this.targetId = this.plan[0]!;
   }
 
   update(dt: number, van: VanSample): GameEvent[] {
@@ -189,6 +206,9 @@ export class Game {
     if (this.targetId === id || this.autoTarget) {
       this.autoTarget = true;
       this.retarget();
+    } else {
+      // The player's pick stays the target; keep the suggested order for the rest.
+      this.plan = this.plan.filter((q) => q !== id);
     }
     if (!this.remaining.length) {
       this.phase = 'ended';

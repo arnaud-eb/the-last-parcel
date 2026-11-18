@@ -24,7 +24,8 @@ export function Rules({ onClose, closeLabel }: { onClose: () => void; closeLabel
         <ul>
           <li>Every parcel in your van has a <b>glowing ring</b> in front of its door, in the colour of its type.</li>
           <li><b>Stop inside any ring</b> and stay still for a second: the parcel is handed over.</li>
-          <li>The ring with the <b>beam of light</b> is the stop you're heading for. The yellow arrow and the minimap point to it. Tap the <b>parcels</b> counter (or press Tab) to choose another stop.</li>
+          <li>The ring with the <b>beam of light</b> is your next stop on a suggested route through the town (Grund, down the cliff, comes last). The yellow arrow and the minimap point to it.</li>
+          <li>Tap the <b>parcels</b> counter (or press Tab) to see the route and choose another stop.</li>
         </ul>
 
         <h3>Parcels</h3>

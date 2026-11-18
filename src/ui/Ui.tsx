@@ -6,6 +6,7 @@ import { Minimap } from './Minimap';
 import { ParcelTray } from './ParcelTray';
 import { ParcelIcon } from './ParcelIcon';
 import { Rules } from './Rules';
+import { Tally } from './Tally';
 
 const RULES_SEEN = 'tlp.rulesSeen';
 const rulesSeen = () => {
@@ -178,7 +179,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
         </div>
       )}
 
-      {hud.phase === 'ended' && !rules && <TallyCard app={app} onRules={() => openRules('resume')} />}
+      {hud.phase === 'ended' && !rules && <Tally app={app} onRules={() => openRules('resume')} />}
       {rules && <Rules onClose={closeRules} closeLabel={rules === 'start' ? 'Start shift' : hud.phase === 'driving' ? 'Back to driving' : 'Got it'} />}
 
       {debug && (
@@ -199,44 +200,6 @@ function deliveredText(p: Parcel): string {
   if (p.type === 'fragile' && p.hits === 0) pts += PARCEL_RULES.fragileIntactBonus;
   const tip = p.tip && (p.deliveredAt ?? 999) <= PARCEL_RULES.tipBy && (p.type !== 'fragile' || p.hits === 0) ? `  (tip +${p.tip})` : '';
   return `${thanks}  +${pts}${tip}`;
-}
-
-const RANK_LINE: Record<string, string> = {
-  'Missed the Sleigh': 'Some trees will be bare tonight. Tomorrow, the sleigh.',
-  'On Time': 'Most of the town has its presents. Well driven.',
-  'Christmas Hero': 'The whole old town is talking about the Kuerier van.',
-};
-
-function TallyCard({ app, onRules }: { app: App; onRules: () => void }) {
-  const g = app.game;
-  const t = g.tally;
-  const all = t.delivered === t.total;
-  return (
-    <div class="overlay">
-      <div class="panel card tally" data-testid="end-card">
-        <p class="kicker">{all ? `All delivered at ${g.clock.format()}` : '6pm. Shift over.'}</p>
-        <h2 data-testid="rank">{t.rank}</h2>
-        <p>{RANK_LINE[t.rank]}</p>
-        <table>
-          <tbody>
-            {t.lines.map((l) => (
-              <tr key={l.label} class={l.points === 0 ? 'zero' : ''}>
-                <td>{l.label}</td>
-                <td>{l.points > 0 ? `+${l.points}` : l.points < 0 ? `−${-l.points}` : '0'}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr><td>Score</td><td class="big" data-testid="final-score">{t.score}</td></tr>
-            <tr class="best"><td>Best possible today</td><td>{t.best}</td></tr>
-          </tfoot>
-        </table>
-        <p>{all ? 'Every parcel under a tree.' : `${t.total - t.delivered} of ${t.total} parcels won't be under the tree tonight.`} <b>Schéi Chrëschtdeeg!</b></p>
-        <button class="btn" onClick={() => { app.restart(); app.start(); }}>Drive again</button>
-        <button class="link" onClick={onRules}>How scoring works</button>
-      </div>
-    </div>
-  );
 }
 
 function formatLeft(min: number): string {

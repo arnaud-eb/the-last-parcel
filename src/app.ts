@@ -95,15 +95,15 @@ export class App {
     this.van = new VanPhysics(R, physics, s.x, s.z, s.heading);
     this.scene.add(this.vanMesh.group, this.vanMesh.shadow, this.zone.group, this.zone.others);
 
-    // Default target = nearest stop by driving distance, not as the crow flies (Grund is below the Corniche).
+    // Default target = next stop on a planned route by driving distance, not as the crow flies (Grund is below the Corniche).
     const nav = new NavGraph();
     this.game = new Game({
       seed: opts.seed,
       stops: this.world.layout.stops,
       start: s,
-      distance: (x, z, stops) => {
-        const y = this.van ? this.van.body.translation().y : 0;
-        return nav.distances(x, y, z, stops.map((st) => ({ x: st.zone.x, y: st.y, z: st.zone.z })));
+      distance: (from, stops) => {
+        const y = from.y ?? (this.van ? this.van.body.translation().y : 0);
+        return nav.distances(from.x, y, from.z, stops.map((st) => ({ x: st.zone.x, y: st.y, z: st.zone.z })));
       },
     });
     this.van.loadKg = this.game.loadKg;

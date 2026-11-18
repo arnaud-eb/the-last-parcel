@@ -109,6 +109,7 @@ test('the shift ends at 6pm with parcels undelivered, on the tally screen', asyn
   await expect(page.getByTestId('end-card')).toContainText('Shift over');
   await expect(page.getByTestId('rank')).toHaveText('Missed the Sleigh');
   await expect(page.getByTestId('final-score')).toHaveText('0');
+  await expect(page.getByTestId('end-card')).toHaveAttribute('data-mood', 'missed');
 });
 
 test('a full shift: deliveries of every type, a crash, then the tally and rank at 6pm', async ({ page }) => {
@@ -176,7 +177,8 @@ test('every parcel delivered ends the shift early, all delivered', async ({ page
   });
   expect(s.state.phase).toBe('ended');
   expect(s.tally.rank).toBe('Christmas Hero');
-  await expect(page.getByTestId('end-card')).toContainText('All delivered');
+  await expect(page.getByTestId('end-card')).toContainText('delivered at');
+  await expect(page.getByTestId('end-card')).toHaveAttribute('data-mood', 'hero');
 });
 
 test('stop picker: the tray lists the parcels and a tap sets the target; the minimap shows', async ({ page }) => {
@@ -188,6 +190,8 @@ test('stop picker: the tray lists the parcels and a tap sets the target; the min
   await page.getByTestId('tray-toggle').click();
   const items = page.getByTestId('tray').locator('.tray-item');
   expect(await items.count()).toBe(await page.evaluate(() => window.__game.state.parcelsLeft));
+  // Listed in the suggested route order, starting with the current target.
+  await expect(items.first()).toHaveAttribute('data-testid', `pick-${first}`);
   const pick = await page.evaluate((first) => window.__game.parcels.filter((p) => p.id !== first).at(-1)!, first);
   await page.getByTestId(`pick-${pick.id}`).click();
   expect(await page.evaluate(() => window.__game.targetId)).toBe(pick.id);

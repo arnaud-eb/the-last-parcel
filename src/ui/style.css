@@ -305,6 +305,80 @@ html, body {
 .tally tfoot td { border-top: 1px solid var(--panel-edge); padding-top: 8px; font-size: 18px; font-weight: 800; }
 .tally tfoot .big { font-size: 34px; color: var(--amber); }
 
+/* ---------- Tally moods ---------- */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tally { position: relative; animation: tally-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes tally-in { from { opacity: 0; transform: scale(0.85) translateY(12px); } to { opacity: 1; transform: none; } }
+.tally .title { font-size: 34px; margin: 2px 0 0; }
+.tally .wish { margin-top: 4px; }
+
+.tally.hero { border: 2px solid rgba(255, 200, 90, 0.85); box-shadow: 0 0 60px rgba(255, 180, 60, 0.45), 0 6px 24px rgba(0, 0, 0, 0.3); }
+.tally.hero .title {
+  font-size: 42px; font-weight: 900;
+  background: linear-gradient(100deg, #ffe7a8 0%, #ffb547 35%, #fff4d6 50%, #ffb547 65%, #ffe7a8 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 2.6s linear infinite;
+  filter: drop-shadow(0 2px 14px rgba(255, 170, 60, 0.6));
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+.tally.hero .kicker { color: #ffe29a; }
+
+.tally.ontime { border-color: rgba(255, 181, 71, 0.45); }
+.tally.ontime .title { color: var(--amber); text-shadow: 0 2px 16px rgba(255, 170, 70, 0.4); }
+
+.tally.missed { border-color: rgba(150, 190, 255, 0.3); background: rgba(14, 24, 52, 0.72); }
+.tally.missed .title { color: #bcd4ff; text-shadow: 0 2px 16px rgba(120, 160, 255, 0.35); }
+.tally.missed .kicker { color: #9fbbe8; }
+.tally.missed .big { color: #cfe0ff; }
+.tally-overlay.missed { background: radial-gradient(ellipse at center, rgba(10, 20, 50, 0.35), rgba(6, 12, 34, 0.8)); }
+
+.rays {
+  position: absolute; left: 50%; top: 50%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 200, 100, 0.13) 0deg 7deg, transparent 7deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 55%); mask: radial-gradient(circle, #000 0%, transparent 55%);
+  animation: spin 40s linear infinite; pointer-events: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.confetti-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti {
+  position: absolute; top: -20px; width: 9px; height: 14px; border-radius: 2px; opacity: 0.95;
+  animation: fall linear infinite;
+}
+@keyframes fall {
+  from { transform: translateY(-20px) rotate(0deg); }
+  to { transform: translateY(110vh) rotate(var(--spin)); }
+}
+.star {
+  position: absolute; width: 10px; height: 10px; background: #ffd27a;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: twinkle ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.9));
+}
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1.3); } }
+
+.ladder { margin: 12px 4px 4px; }
+.ladder .track { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
+.ladder .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #7fa6e8, var(--amber), #ffe29a); animation: grow 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes grow { from { width: 0; } }
+.ladder .track b { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; background: rgba(255, 244, 226, 0.6); }
+.ladder .labels { position: relative; height: 16px; margin-top: 4px; font-size: 11px; color: var(--ink-dim); }
+.ladder .labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ladder .labels span.on { color: var(--ink); font-weight: 800; }
+@media (prefers-reduced-motion: reduce) {
+  .confetti, .star, .rays, .tally.hero .title, .tally, .ladder .fill { animation: none; }
+  .confetti { display: none; }
+}
+
+.tray-head { margin: 2px 6px 4px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-dim); }
+.tray-item .icon { position: relative; }
+.tray-item .step {
+  position: absolute; left: -4px; top: -6px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+  background: rgba(10, 17, 38, 0.9); border: 1px solid var(--panel-edge); color: var(--ink);
+  font: 800 9px/13px var(--font); font-style: normal; text-align: center;
+}
+
 .link {
   display: block;
   margin: 10px auto 0;
@@ -357,6 +431,80 @@ html, body {
 .tally tr.zero { color: var(--ink-dim); opacity: 0.6; }
 .tally tfoot td { border-top: 1px solid var(--panel-edge); padding-top: 8px; font-size: 18px; font-weight: 800; }
 .tally tfoot .big { font-size: 34px; color: var(--amber); }
+
+/* ---------- Tally moods ---------- */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tally { position: relative; animation: tally-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes tally-in { from { opacity: 0; transform: scale(0.85) translateY(12px); } to { opacity: 1; transform: none; } }
+.tally .title { font-size: 34px; margin: 2px 0 0; }
+.tally .wish { margin-top: 4px; }
+
+.tally.hero { border: 2px solid rgba(255, 200, 90, 0.85); box-shadow: 0 0 60px rgba(255, 180, 60, 0.45), 0 6px 24px rgba(0, 0, 0, 0.3); }
+.tally.hero .title {
+  font-size: 42px; font-weight: 900;
+  background: linear-gradient(100deg, #ffe7a8 0%, #ffb547 35%, #fff4d6 50%, #ffb547 65%, #ffe7a8 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 2.6s linear infinite;
+  filter: drop-shadow(0 2px 14px rgba(255, 170, 60, 0.6));
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+.tally.hero .kicker { color: #ffe29a; }
+
+.tally.ontime { border-color: rgba(255, 181, 71, 0.45); }
+.tally.ontime .title { color: var(--amber); text-shadow: 0 2px 16px rgba(255, 170, 70, 0.4); }
+
+.tally.missed { border-color: rgba(150, 190, 255, 0.3); background: rgba(14, 24, 52, 0.72); }
+.tally.missed .title { color: #bcd4ff; text-shadow: 0 2px 16px rgba(120, 160, 255, 0.35); }
+.tally.missed .kicker { color: #9fbbe8; }
+.tally.missed .big { color: #cfe0ff; }
+.tally-overlay.missed { background: radial-gradient(ellipse at center, rgba(10, 20, 50, 0.35), rgba(6, 12, 34, 0.8)); }
+
+.rays {
+  position: absolute; left: 50%; top: 50%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 200, 100, 0.13) 0deg 7deg, transparent 7deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 55%); mask: radial-gradient(circle, #000 0%, transparent 55%);
+  animation: spin 40s linear infinite; pointer-events: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.confetti-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti {
+  position: absolute; top: -20px; width: 9px; height: 14px; border-radius: 2px; opacity: 0.95;
+  animation: fall linear infinite;
+}
+@keyframes fall {
+  from { transform: translateY(-20px) rotate(0deg); }
+  to { transform: translateY(110vh) rotate(var(--spin)); }
+}
+.star {
+  position: absolute; width: 10px; height: 10px; background: #ffd27a;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: twinkle ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.9));
+}
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1.3); } }
+
+.ladder { margin: 12px 4px 4px; }
+.ladder .track { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
+.ladder .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #7fa6e8, var(--amber), #ffe29a); animation: grow 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes grow { from { width: 0; } }
+.ladder .track b { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; background: rgba(255, 244, 226, 0.6); }
+.ladder .labels { position: relative; height: 16px; margin-top: 4px; font-size: 11px; color: var(--ink-dim); }
+.ladder .labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ladder .labels span.on { color: var(--ink); font-weight: 800; }
+@media (prefers-reduced-motion: reduce) {
+  .confetti, .star, .rays, .tally.hero .title, .tally, .ladder .fill { animation: none; }
+  .confetti { display: none; }
+}
+
+.tray-head { margin: 2px 6px 4px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-dim); }
+.tray-item .icon { position: relative; }
+.tray-item .step {
+  position: absolute; left: -4px; top: -6px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+  background: rgba(10, 17, 38, 0.9); border: 1px solid var(--panel-edge); color: var(--ink);
+  font: 800 9px/13px var(--font); font-style: normal; text-align: center;
+}
 
 .link {
   display: block;
@@ -425,14 +573,96 @@ html, body {
   .tray-item { min-height: 38px; font-size: 12px; padding: 2px 8px 2px 4px; }
   .tray-item .icon { font-size: 16px; }
   .tally { padding: 10px 18px; max-height: 94vh; overflow-y: auto; }
-  .tally h2 { font-size: 24px; }
+  /* Two columns on a short screen: headline, ladder and buttons left, the score lines right. */
+  .tally { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'head lines' 'foot lines'; column-gap: 22px; align-items: center; min-width: min(94vw, 720px); max-width: 94vw; }
+  .tally .head { grid-area: head; }
+  .tally .lines { grid-area: lines; align-self: center; }
+  .tally .foot { grid-area: foot; }
+  .tally h2, .tally .title { font-size: 24px; }
+  .tally.hero .title { font-size: 28px; }
+  .ladder { margin: 4px 4px 0; }
+  .ladder .labels { font-size: 9px; height: 12px; }
   .tally p { margin: 4px 0; font-size: 12px; }
   .tally table { font-size: 12px; margin: 4px 0 2px; }
   .tally td { padding: 1px 2px; }
   .tally tfoot td { font-size: 14px; padding-top: 4px; }
   .tally tfoot .big { font-size: 22px; }
   .tally .btn { min-height: 44px; margin-top: 6px; }
-  .link { margin-top: 2px; min-height: 32px; padding: 4px 10px; font-size: 12px; }
+  /* ---------- Tally moods ---------- */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tally { position: relative; animation: tally-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+@keyframes tally-in { from { opacity: 0; transform: scale(0.85) translateY(12px); } to { opacity: 1; transform: none; } }
+.tally .title { font-size: 34px; margin: 2px 0 0; }
+.tally .wish { margin-top: 4px; }
+
+.tally.hero { border: 2px solid rgba(255, 200, 90, 0.85); box-shadow: 0 0 60px rgba(255, 180, 60, 0.45), 0 6px 24px rgba(0, 0, 0, 0.3); }
+.tally.hero .title {
+  font-size: 42px; font-weight: 900;
+  background: linear-gradient(100deg, #ffe7a8 0%, #ffb547 35%, #fff4d6 50%, #ffb547 65%, #ffe7a8 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 2.6s linear infinite;
+  filter: drop-shadow(0 2px 14px rgba(255, 170, 60, 0.6));
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+.tally.hero .kicker { color: #ffe29a; }
+
+.tally.ontime { border-color: rgba(255, 181, 71, 0.45); }
+.tally.ontime .title { color: var(--amber); text-shadow: 0 2px 16px rgba(255, 170, 70, 0.4); }
+
+.tally.missed { border-color: rgba(150, 190, 255, 0.3); background: rgba(14, 24, 52, 0.72); }
+.tally.missed .title { color: #bcd4ff; text-shadow: 0 2px 16px rgba(120, 160, 255, 0.35); }
+.tally.missed .kicker { color: #9fbbe8; }
+.tally.missed .big { color: #cfe0ff; }
+.tally-overlay.missed { background: radial-gradient(ellipse at center, rgba(10, 20, 50, 0.35), rgba(6, 12, 34, 0.8)); }
+
+.rays {
+  position: absolute; left: 50%; top: 50%; width: 160vmax; height: 160vmax; margin: -80vmax 0 0 -80vmax;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 200, 100, 0.13) 0deg 7deg, transparent 7deg 18deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, transparent 55%); mask: radial-gradient(circle, #000 0%, transparent 55%);
+  animation: spin 40s linear infinite; pointer-events: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.confetti-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti {
+  position: absolute; top: -20px; width: 9px; height: 14px; border-radius: 2px; opacity: 0.95;
+  animation: fall linear infinite;
+}
+@keyframes fall {
+  from { transform: translateY(-20px) rotate(0deg); }
+  to { transform: translateY(110vh) rotate(var(--spin)); }
+}
+.star {
+  position: absolute; width: 10px; height: 10px; background: #ffd27a;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: twinkle ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 200, 100, 0.9));
+}
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1.3); } }
+
+.ladder { margin: 12px 4px 4px; }
+.ladder .track { position: relative; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.12); }
+.ladder .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg, #7fa6e8, var(--amber), #ffe29a); animation: grow 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes grow { from { width: 0; } }
+.ladder .track b { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; background: rgba(255, 244, 226, 0.6); }
+.ladder .labels { position: relative; height: 16px; margin-top: 4px; font-size: 11px; color: var(--ink-dim); }
+.ladder .labels span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ladder .labels span.on { color: var(--ink); font-weight: 800; }
+@media (prefers-reduced-motion: reduce) {
+  .confetti, .star, .rays, .tally.hero .title, .tally, .ladder .fill { animation: none; }
+  .confetti { display: none; }
+}
+
+.tray-head { margin: 2px 6px 4px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--ink-dim); }
+.tray-item .icon { position: relative; }
+.tray-item .step {
+  position: absolute; left: -4px; top: -6px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+  background: rgba(10, 17, 38, 0.9); border: 1px solid var(--panel-edge); color: var(--ink);
+  font: 800 9px/13px var(--font); font-style: normal; text-align: center;
+}
+
+.link { margin-top: 2px; min-height: 32px; padding: 4px 10px; font-size: 12px; }
   .rules { padding: 12px 18px; }
   .rules h2 { font-size: 20px; }
   .rules h3 { margin: 8px 0 2px; font-size: 11px; }
