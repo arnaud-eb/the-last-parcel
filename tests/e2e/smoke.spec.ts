@@ -149,6 +149,23 @@ test('a full shift: deliveries of every type, a crash, then the tally and rank a
   await expect(page.getByTestId('end-card')).toContainText('9 parcels delivered');
 });
 
+test('after 6pm the van stays parked, even if it was rolling', async ({ page }) => {
+  await openGame(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.start();
+    g.step(296, { throttle: 0 });
+    g.step(4, { throttle: 1 }); // still on the gas when the clock hits 6pm
+    const atEnd = g.state.van;
+    g.step(10);
+    return { atEnd, later: g.state.van, phase: g.state.phase };
+  });
+  expect(r.phase).toBe('ended');
+  expect(Math.abs(r.later.speed)).toBeLessThan(0.2);
+  // Stops within a few metres and never backs away.
+  expect(Math.hypot(r.later.x - r.atEnd.x, r.later.z - r.atEnd.z)).toBeLessThan(15);
+});
+
 test('every parcel delivered ends the shift early, all delivered', async ({ page }) => {
   await openGame(page);
   const s = await page.evaluate(() => {

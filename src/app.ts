@@ -212,7 +212,8 @@ export class App {
   }
 
   private stepPhysics(dt: number, settleOnly: boolean): void {
-    const input = settleOnly || this.game.phase !== 'driving' ? { steer: 0, throttle: 0, brake: this.game.phase === 'ended' ? 1 : 0 } : this.input.value;
+    // Before the start and after 6pm the van stays put: handbrake on, no player input.
+    const input = settleOnly || this.game.phase !== 'driving' ? { steer: 0, throttle: 0, brake: 0, park: this.game.phase === 'ended' } : this.input.value;
     this.van.update(dt, input);
     this.physics.timestep = dt;
     this.physics.step();

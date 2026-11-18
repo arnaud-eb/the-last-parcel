@@ -9,6 +9,8 @@ export type DriveInput = {
   throttle: number;
   /** 0..1. Brakes while rolling forward; reverses once stopped. */
   brake: number;
+  /** Handbrake on, engine off (shift over). Never reverses. */
+  park?: boolean;
 };
 
 export const VAN = {
@@ -135,6 +137,10 @@ export class VanPhysics {
       else if (speed > -VAN.maxReverse) engine = -engineForce * 0.6 * input.brake;
     }
     if (input.throttle === 0 && input.brake === 0) brake = 1.2; // rolling resistance
+    if (input.park) {
+      engine = 0;
+      brake = brakeForce;
+    }
 
     for (let i = 0; i < 4; i++) {
       v.setWheelSteering(i, i < 2 ? this.steer : 0);

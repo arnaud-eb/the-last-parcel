@@ -1,7 +1,7 @@
 import { render } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { App, AppEvent, HudSnapshot } from '../app';
-import { PARCEL_RULES, parcelValue, type Parcel } from '../core/parcels';
+import { PARCEL_LABEL, PARCEL_RULES, parcelValue, type Parcel } from '../core/parcels';
 import { Minimap } from './Minimap';
 import { ParcelTray, TYPE_ICON } from './ParcelTray';
 
@@ -102,7 +102,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
 
       {hud.target && hud.phase === 'driving' && (
         <div class="panel target-card" data-testid="target">
-          <span>{TYPE_ICON[hud.target.type]} {hud.target.address}</span>
+          <span>{TYPE_ICON[hud.target.type]} <span class="type">{PARCEL_LABEL[hud.target.type]}</span> {hud.target.address}</span>
           <span class="dist">{Math.round(hud.target.dist)} m</span>
         </div>
       )}
@@ -131,7 +131,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       </div>
 
       <TouchControls app={app} />
-      {hud.phase === 'driving' && <div class="panel keys-hint">WASD / arrows to drive · Space to brake · Tab next stop · R if stuck · stop in the glowing ring</div>}
+      {hud.phase === 'driving' && <div class="panel keys-hint">↑ or W: go · ↓ or S: brake, then reverse · ← → or A D: steer · Tab: change stop · R: back on the road</div>}
 
       {hud.phase === 'ready' && !app.opts.test && (
         <div class="overlay" onPointerDown={() => app.start()}>

@@ -90,6 +90,7 @@ html, body {
   gap: 8px;
   align-items: center;
 }
+.target-card .type { color: var(--ink-dim); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 2px; }
 .target-card .dist { color: var(--amber); font-weight: 800; font-variant-numeric: tabular-nums; }
 
 .marker {
