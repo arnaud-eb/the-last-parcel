@@ -113,7 +113,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
       } else if (e.type === 'damaged') {
         toast(e.fragile ? `Ouch! Something fragile rattled.  −${e.penalty}` : `Ouch!  −${e.penalty}`, undefined, 1800);
       } else if (e.type === 'recovered') {
-        toast(e.auto ? 'Back on the road. Careful on the ice!' : 'Back on the road.', undefined, 2200);
+        toast(e.reason === 'fall' ? 'What a jump! Back on the road.' : e.auto ? 'Back on the road. Careful on the ice!' : 'Back on the road.', undefined, 2400);
+      } else if (e.type === 'parapetBroken') {
+        navigator.vibrate?.([40, 30, 90]);
       } else if (e.type === 'hit') {
         navigator.vibrate?.(Math.min(80, 20 + e.strength * 6));
       }

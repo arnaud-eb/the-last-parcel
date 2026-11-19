@@ -273,3 +273,46 @@ test.describe('on a 2x (Retina) screen', () => {
     expect(w).toBe(cw * 2);
   });
 });
+
+test('driving hard into the Pont Adolphe parapet breaks through; the van falls and is put back on the road', async ({ page }) => {
+  await openGame(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.start();
+    const events: { type: string; reason?: string }[] = [];
+    g.app.on((e) => events.push(e as { type: string; reason?: string }));
+    // North end of the bridge, heading south across the valley; speed up, then swerve.
+    g.teleport(0, 58, 0);
+    g.step(5, { throttle: 1 });
+    const speed = g.state.van.speed;
+    g.step(1.2, { throttle: 1, steer: 1 });
+    const lowest: number[] = [];
+    for (let i = 0; i < 40; i++) {
+      g.step(0.25);
+      lowest.push(g.state.van.y);
+    }
+    return { speed, events: events.map((e) => e.type + (e.reason ? ':' + e.reason : '')), minY: Math.min(...lowest), van: g.state.van };
+  });
+  expect(r.speed).toBeGreaterThan(8);
+  expect(r.events).toContain('parapetBroken');
+  expect(r.minY).toBeLessThan(-15);
+  expect(r.events).toContain('recovered:fall');
+  expect(r.van.y).toBeGreaterThan(-2);
+  expect(r.van.upY).toBeGreaterThan(0.95);
+});
+
+test('rolling gently against the parapet does not break it', async ({ page }) => {
+  await openGame(page);
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    g.start();
+    const events: string[] = [];
+    g.app.on((e) => events.push(e.type));
+    // Across the deck toward the parapet from the centreline: too short a run to get going.
+    g.teleport(0, 110, Math.PI / 2);
+    g.step(3, { throttle: 1 });
+    return { events, van: g.state.van };
+  });
+  expect(r.events).not.toContain('parapetBroken');
+  expect(r.van.y).toBeGreaterThan(-1);
+});

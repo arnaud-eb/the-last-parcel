@@ -48,14 +48,7 @@ export function buildColliders(R: Rapier, world: RAPIER.World, layout: Layout): 
     const len = Math.hypot(bx - ax, bz - az);
     const rot = Math.atan2(bx - ax, bz - az);
     add(R.ColliderDesc.cuboid(r.halfWidth + 0.7, 0.7, len / 2 + 2).setTranslation((ax + bx) / 2, ay - 0.7, (az + bz) / 2).setRotation(yawQuat(rot)));
-    // Parapets only over the valley itself, rim to rim, so the junctions at both ends stay open.
-    const { zNorth, zSouth } = VALLEYS.petrusse;
-    const pz = (zNorth + zSouth) / 2;
-    const plen = zSouth - zNorth + 4;
-    for (const s of [-1, 1]) {
-      const ox = Math.cos(rot) * s * (r.halfWidth + 0.5);
-      add(R.ColliderDesc.cuboid(0.2, 0.6, plen / 2).setTranslation((ax + bx) / 2 + ox, ay + 0.5, pz).setRotation(yawQuat(rot)));
-    }
+    // The parapets are breakable and own their colliders (BridgeRails).
   }
 
   for (const w of parapetSegments()) {

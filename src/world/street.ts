@@ -240,14 +240,7 @@ function addBridge(walls: GeoBuilder, roofs: GeoBuilder): void {
 
   // Abutment piers down to the valley floor at both ends.
   for (const s of [-1, 1]) box(walls, roofs, P, 0, s * (span / 2 + 2), hw, 4, VALLEY_Y - 1, -1.4, SANDSTONE, 0.31, true);
-  // Parapets on the deck, over the valley only (rim to rim) so the junctions at both ends stay open.
-  const plen = zSouth - zNorth + 4;
-  for (const s of [-1, 1]) {
-    for (let z = -plen / 2; z < plen / 2 - 1e-6; z += 6) {
-      const z1 = Math.min(plen / 2, z + 6);
-      box(walls, roofs, P, s * (hw - 0.2), (z + z1) / 2, 0.2, (z1 - z) / 2, 0, 0.95, SANDSTONE, 0.31);
-    }
-  }
+  // The deck's parapets are breakable: see BridgeRails (world/bridgeRail.ts).
 }
 
 /** Low stone walls along cliff-edge streets and the Constitution / Bock viewpoints. */

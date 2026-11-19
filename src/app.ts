@@ -11,6 +11,7 @@ import { WorldView } from './render/world';
 import { ChaseCamera } from './render/chaseCamera';
 import { DeliveryZoneView } from './render/deliveryZone';
 import { TyreTracks } from './render/tyreTracks';
+import { BridgeRails } from './world/bridgeRail';
 import { CAMERA_PRESETS, type CameraPresetName } from './render/cameraPresets';
 import { loadRapier, type Rapier } from './vehicle/rapier';
 import { VanPhysics } from './vehicle/van';
@@ -32,7 +33,7 @@ export type AppOptions = {
   isMobile: boolean;
 };
 
-export type AppEvent = GameEvent | { type: 'hit'; strength: number } | { type: 'recovered'; auto: boolean } | { type: 'targetChanged' };
+export type AppEvent = GameEvent | { type: 'hit'; strength: number } | { type: 'recovered'; auto: boolean; reason: 'stuck' | 'fall' } | { type: 'parapetBroken' } | { type: 'targetChanged' };
 
 /** What the HUD needs each frame. */
 export type HudSnapshot = {
@@ -49,6 +50,8 @@ export type HudSnapshot = {
 };
 
 const FIXED_DT = 1 / 60;
+/** A drop bigger than this (m) since the wheels last touched counts as a fall off the bridge or a cliff. */
+const FALL_HEIGHT = 12;
 
 export class App {
   readonly scene = new THREE.Scene();
@@ -65,6 +68,10 @@ export class App {
   private readonly vanMesh = new VanMesh();
   private readonly zone = new DeliveryZoneView();
   private readonly tracks = new TyreTracks();
+  private readonly rails: BridgeRails;
+  /** Height of the ground under the van when it last had wheels down (detects a big fall). */
+  private groundY = 0;
+  private landedFor = 0;
   private readonly chase: ChaseCamera;
   private readonly recovery = new RecoveryWatch();
   private snow: Snow;
@@ -110,6 +117,8 @@ export class App {
     });
     this.van.loadKg = this.game.loadKg;
     this.chase = new ChaseCamera(this.camera, R, physics);
+    this.rails = new BridgeRails(R, physics);
+    this.scene.add(this.rails.group);
 
     this.snow = new Snow(this.quality.settings.snowCount);
     this.scene.add(this.snow.mesh);
@@ -161,6 +170,8 @@ export class App {
     this.van.teleport(s.x, s.z, s.heading);
     this.game.reset(seed);
     this.van.loadKg = this.game.loadKg;
+    this.rails.reset();
+    this.groundY = this.van.body.translation().y;
     this.chase.reset();
     this.recovery.reset();
   }
@@ -171,18 +182,22 @@ export class App {
     const ground = n && n.dist < n.seg.road.halfWidth + 1 ? n.y : terrainHeight(x, z);
     this.van.teleport(x, z, heading, ground);
     for (let i = 0; i < 20; i++) this.stepPhysics(FIXED_DT, true);
+    this.groundY = this.van.body.translation().y;
+    this.landedFor = 0;
     this.chase.reset();
     this.recovery.reset();
   }
 
   /** Put a stuck or overturned van back on the nearest road, upright, facing its way. */
-  recover(auto = false): void {
+  recover(auto = false, reason: 'stuck' | 'fall' = 'stuck'): void {
     const p = this.van.body.translation();
     const r = recoveryPoint(p.x, p.y, p.z, this.van.heading);
     this.van.teleport(r.x, r.z, r.heading, r.y);
     this.chase.reset();
     this.recovery.reset();
-    this.emit([{ type: 'recovered', auto }]);
+    this.groundY = r.y;
+    this.landedFor = 0;
+    this.emit([{ type: 'recovered', auto, reason }]);
   }
 
   setCameraPreset(name: CameraPresetName | null): void {
@@ -218,15 +233,35 @@ export class App {
   private stepPhysics(dt: number, settleOnly: boolean): void {
     // Before the start and after 6pm the van stays put: handbrake on, no player input.
     const input = settleOnly || this.game.phase !== 'driving' ? { steer: 0, throttle: 0, brake: 0, park: this.game.phase === 'ended' } : this.input.value;
+    if (!settleOnly) {
+      const p = this.van.body.translation();
+      const v = this.van.body.linvel();
+      if (this.rails.update(dt, { x: p.x, y: p.y, z: p.z, vx: v.x, vy: v.y, vz: v.z })) this.emit([{ type: 'parapetBroken' }]);
+    }
     this.van.update(dt, input);
     this.physics.timestep = dt;
     this.physics.step();
     this.van.afterStep();
     if (settleOnly) return;
     if (this.van.impact > 3) this.emit([{ type: 'hit', strength: this.van.impact }, ...this.game.hit(this.van.impact)]);
-    if (this.game.phase === 'driving' && this.recovery.update(dt, { upY: this.van.upY, speed: this.van.speed, wheelsOnGround: this.van.wheelsOnGround() })) {
-      this.recover(true);
+    const wheels = this.van.wheelsOnGround();
+    if (this.game.phase === 'driving' && this.recovery.update(dt, { upY: this.van.upY, speed: this.van.speed, wheelsOnGround: wheels })) {
+      this.recover(true, this.groundY - this.van.body.translation().y > FALL_HEIGHT ? 'fall' : 'stuck');
       return;
+    }
+    // Over the parapet and down into the valley: a moment to take it in, then back on the bridge.
+    if (wheels > 0) {
+      const y = this.van.body.translation().y;
+      if (this.groundY - y > FALL_HEIGHT) {
+        this.landedFor += dt;
+        if (this.game.phase === 'driving' && this.landedFor > 1.6) {
+          this.recover(true, 'fall');
+          return;
+        }
+      } else {
+        this.groundY = y;
+        this.landedFor = 0;
+      }
     }
     const p = this.van.body.translation();
     const events = this.game.update(dt, { x: p.x, z: p.z, speed: this.van.speed });
@@ -287,6 +322,7 @@ export class App {
   }
 
   private syncVisuals(dt: number): void {
+    this.rails.syncDebris();
     const p = this.van.body.translation();
     const q = this.van.body.rotation();
     this.tmpV.set(p.x, p.y, p.z);
