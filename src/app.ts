@@ -325,9 +325,11 @@ export class App {
     rebuildPost(this.post, this.scene, this.camera, s);
   }
 
-  resize(): void {
+  /** Match the canvas to the window. `force` re-applies it even if unchanged (recovers a blank canvas after a resume). */
+  resize(force = false): void {
     const w = window.innerWidth;
     const h = window.innerHeight;
+    if (force) this.renderer.setSize(w, Math.max(1, h - 1), false);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();

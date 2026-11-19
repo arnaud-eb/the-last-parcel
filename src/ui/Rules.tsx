@@ -18,13 +18,13 @@ export function Rules({ onClose, closeLabel }: { onClose: () => void; closeLabel
     <div class="overlay rules-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div class="panel card rules" data-testid="rules" role="dialog" aria-label="How to play">
         <h2>How to play</h2>
-        <p class="lead">It's 4pm on Christmas Eve. Deliver as many parcels as you can before the 6pm cutoff (about 5 minutes).</p>
+        <p class="lead">It's 4pm on Christmas Eve. Deliver as many parcels as you can before the 6pm cutoff.</p>
 
         <h3>Delivering</h3>
         <ul>
           <li>Every parcel in your van has a <b>glowing ring</b> in front of its door, in the colour of its type.</li>
           <li><b>Stop inside any ring</b> and stay still for a second: the parcel is handed over.</li>
-          <li>The ring with the <b>beam of light</b> is your next stop on a suggested route through the town (Grund, down the cliff, comes last). The yellow arrow and the minimap point to it.</li>
+          <li>The ring with the <b>beam of light</b> is your next stop on a suggested route through the town. The yellow arrow and the minimap point to it.</li>
           <li>Tap the <b>parcels</b> counter (or press Tab) to see the route and choose another stop.</li>
         </ul>
 
@@ -45,8 +45,8 @@ export function Rules({ onClose, closeLabel }: { onClose: () => void; closeLabel
           <li><b>Streak:</b> deliveries less than {SCORING.streakSeconds} seconds apart earn more and more.</li>
           <li><b>Crashes</b> cost points.</li>
           <li>
-            <b>Rank</b>, compared with the best score possible for the day's parcels: Christmas Hero from {pct(SCORING.ranks.hero)}, On Time from{' '}
-            {pct(SCORING.ranks.onTime)}, otherwise Missed the Sleigh.
+            <b>Rank:</b> we compare your score with the best score you could get today. {pct(SCORING.ranks.hero)} or more: Christmas Hero.{' '}
+            {pct(SCORING.ranks.onTime)} or more: On Time. Less: Missed the Sleigh.
           </li>
         </ul>
 

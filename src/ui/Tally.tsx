@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { App } from '../app';
 import { PARCEL_COLOR } from '../core/parcels';
 import { SCORING, type Rank } from '../core/scoring';
+import { enterFullscreen } from './device';
 
 type Mood = 'hero' | 'ontime' | 'missed';
 
@@ -76,7 +77,7 @@ export function Tally({ app, onRules }: { app: App; onRules: () => void }) {
         </table>
         <div class="foot">
           <p class="wish"><b>Schéi Chrëschtdeeg!</b></p>
-          <button class="btn" onClick={() => { app.restart(); app.start(); }}>Drive again</button>
+          <button class="btn" onClick={() => { if (!app.opts.test) void enterFullscreen(); app.restart(); app.start(); }}>Drive again</button>
           <button class="link" onClick={onRules}>How scoring works</button>
         </div>
       </div>

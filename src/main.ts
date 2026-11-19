@@ -1,5 +1,6 @@
 import { App } from './app';
 import { mountUi } from './ui/Ui';
+import { installTouchGuards, watchResume } from './ui/device';
 import { dailySeed } from './net/dailySeed';
 import type { QualitySetting } from './render/quality';
 
@@ -20,6 +21,8 @@ async function boot(): Promise<void> {
     isMobile,
   });
   mountUi(document.getElementById('ui')!, app, { debug: params.has('debug') });
+  installTouchGuards();
+  watchResume(app);
   if (test) {
     const { installTestHook } = await import('./test-hook');
     installTestHook(app);

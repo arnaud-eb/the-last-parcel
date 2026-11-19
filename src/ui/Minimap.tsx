@@ -28,7 +28,11 @@ function draw(app: App, canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const px = Math.round(css * dpr);
   if (!px) return;
-  if (canvas.width !== px) canvas.width = canvas.height = px;
+  // Check both: a canvas starts at 300×150, so at 2× density the width already "matches".
+  if (canvas.width !== px || canvas.height !== px) {
+    canvas.width = px;
+    canvas.height = px;
+  }
   const R = px / 2;
   const s = R / RANGE;
   const v = app.van.body.translation();

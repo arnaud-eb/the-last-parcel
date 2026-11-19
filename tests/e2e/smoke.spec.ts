@@ -258,3 +258,18 @@ test('the rules open from the ? button, pause the game, and close back to drivin
   await expect(page.getByTestId('rules')).toHaveCount(0);
   expect(await page.evaluate(() => (window.__game.app as unknown as { paused: boolean }).paused)).toBe(false);
 });
+
+test.describe('on a 2x (Retina) screen', () => {
+  test.use({ deviceScaleFactor: 2 });
+  test('the minimap canvas is square, so the map is round and the van centred', async ({ page }) => {
+    await openGame(page);
+    await page.evaluate(() => window.__game.start());
+    await frames(page, 3);
+    const [w, h, cw] = await page.evaluate(() => {
+      const c = document.querySelector('canvas.minimap') as HTMLCanvasElement;
+      return [c.width, c.height, c.clientWidth];
+    });
+    expect(w).toBe(h);
+    expect(w).toBe(cw * 2);
+  });
+});

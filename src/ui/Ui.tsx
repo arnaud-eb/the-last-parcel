@@ -6,6 +6,7 @@ import { Minimap } from './Minimap';
 import { ParcelTray } from './ParcelTray';
 import { ParcelIcon } from './ParcelIcon';
 import { Rules } from './Rules';
+import { canFullscreen, enterFullscreen, isFullscreen, isIOS, isStandalone, toggleFullscreen } from './device';
 import { Tally } from './Tally';
 
 const RULES_SEEN = 'tlp.rulesSeen';
@@ -53,7 +54,25 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
     setRules(null);
   };
   // First shift on this device: the rules come before the clock starts.
-  const startShift = () => (rulesSeen() ? app.start() : openRules('start'));
+  const startShift = () => {
+    // Inside the tap: browsers only allow full screen from a user gesture.
+    if (!app.opts.test) void enterFullscreen();
+    if (rulesSeen()) app.start();
+    else openRules('start');
+  };
+  const [fs, setFs] = useState(isFullscreen());
+  useEffect(() => {
+    const onFs = () => setFs(isFullscreen());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyF' && !e.repeat) void toggleFullscreen();
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFs);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
   const markerRef = useRef<HTMLDivElement>(null);
   const last = useRef('');
   const nextId = useRef(1);
@@ -112,10 +131,17 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
   return (
     <>
       <div class="hud-top">
+        <div class="hud-left">
         <div class={`panel clock${late ? ' late' : ''}`}>
           <div class="time" data-testid="clock">{hud.clock}</div>
           <div class="left">{formatLeft(hud.minutesLeft)} to the 6pm cutoff</div>
           <div class="bar"><i style={{ width: `${(1 - hud.progress) * 100}%` }} /></div>
+        </div>
+          {canFullscreen() && (
+            <button class="panel reset fs" data-testid="fullscreen" aria-label={fs ? 'Leave full screen' : 'Full screen'} title="Full screen (F)" onClick={() => void toggleFullscreen()}>
+              {fs ? '⤡' : '⤢'}
+            </button>
+          )}
         </div>
         <div class="stats">
           <button class={`panel stat tray-toggle${trayOpen ? ' open' : ''}`} data-testid="tray-toggle" aria-label="Choose the next stop" onClick={() => setTrayOpen(!trayOpen)}>
@@ -175,6 +201,9 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
             <p>The last Kuerier van of the year. Every present must arrive before Christmas Eve dinner at 6pm.</p>
             <button class="btn" onClick={startShift}>Start shift</button>
             <button class="link" data-testid="how-to-play" onClick={() => openRules('resume')}>How to play</button>
+            {isIOS() && !isStandalone() && (
+              <p class="tip">To play full screen on iPhone: tap Share, then <b>Add to Home Screen</b>, and open the game from there.</p>
+            )}
           </div>
         </div>
       )}
@@ -211,7 +240,13 @@ function formatLeft(min: number): string {
 function RotateHint() {
   return (
     <div class="rotate">
-      <div><span class="phone">📱</span>Turn your phone sideways to drive</div>
+      <div>
+        <svg class="phone" width="44" height="76" viewBox="0 0 44 76" aria-hidden="true">
+          <rect x="2" y="2" width="40" height="72" rx="8" fill="none" stroke="currentColor" stroke-width="3.5" />
+          <rect x="16" y="64" width="12" height="3" rx="1.5" fill="currentColor" />
+        </svg>
+        Turn your phone sideways to drive
+      </div>
     </div>
   );
 }

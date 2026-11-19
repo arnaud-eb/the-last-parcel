@@ -56,13 +56,19 @@ function rearTexture(): THREE.CanvasTexture {
   g.fillStyle = '#d9d2c4';
   g.fillRect(104, 128, 16, 6);
   g.fillRect(136, 128, 16, 6);
-  g.fillStyle = '#eceadf';
-  roundRect(g, 88, 196, 80, 26, 4);
-  g.fillStyle = '#1d2a55';
-  g.font = 'bold 18px system-ui, sans-serif';
+  // Luxembourg plate: yellow, black characters, the EU band with "L" on the left.
+  g.fillStyle = '#f2c200';
+  roundRect(g, 86, 196, 84, 26, 4);
+  g.fillStyle = '#1f3a93';
+  g.fillRect(86, 196, 12, 26);
+  g.fillStyle = '#ffffff';
+  g.font = 'bold 9px system-ui, sans-serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.fillText('KU 2312', 128, 210);
+  g.fillText('L', 92, 215);
+  g.fillStyle = '#111111';
+  g.font = 'bold 17px system-ui, sans-serif';
+  g.fillText('KU 2312', 134, 210);
   return canvasTexture(c);
 }
 
