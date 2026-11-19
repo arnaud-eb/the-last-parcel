@@ -4,7 +4,7 @@
  * collider); the silhouette pieces that make it recognisable are built here.
  */
 import * as THREE from 'three/webgpu';
-import { abs, atan, attribute, float, floor, fract, hash, length, mix, normalWorld, positionWorld, pow, smoothstep, step, uv, vec2, vec3, vertexColor } from 'three/tsl';
+import { abs, atan, attribute, texture, float, floor, fract, hash, length, mix, normalWorld, positionWorld, pow, smoothstep, step, uv, vec2, vec3, vertexColor } from 'three/tsl';
 import { GeoBuilder } from './geo';
 import { box, wallBuilders, wallMeshes } from './buildings';
 import type { Landmark } from './town';
@@ -161,6 +161,9 @@ export function buildLandmarkExtras(): THREE.Group {
   const props = new GeoBuilder(); // vertex-coloured props (lions, sentry boxes, wheel frame)
   const glows = new Glows();
   const stained = new StainedGlass();
+  /** Gare tower clock faces (world matrices); their hands follow the shift clock. */
+  const clockFaces: THREE.Matrix4[] = [];
+  let gareSign: THREE.Matrix4 | null = null;
 
   // --- Cathedral: two dark slate needle spires on the front towers, a green copper spire over the crossing.
   {
@@ -217,7 +220,24 @@ export function buildLandmarkExtras(): THREE.Group {
       box(props, props, P, doorX + s * 2.4, -d - 1.4, 0.55, 0.55, 0, 2.3, BLUE, 0.1);
       needle(props, P, doorX + s * 2.4, -d - 1.4, 0.85, 2.3, 3.1, 4, BLUE);
       glows.add(M(doorX + s * 2.4, 1.7, -d - 1.96, Math.PI, [0.5, 0.7, 1]), [1.6, 0.9, 0.4]);
+      glows.add(M(doorX + s * 1.3, 3.1, -d - 0.12, Math.PI, [0.32, 0.5, 1]), [3.2, 1.8, 0.7]); // door lanterns
     }
+    // Renaissance dormers: tall, with stepped gables and a finial, lit windows.
+    const H = b.height;
+    for (const x of [-11, 0, 11]) {
+      const z = -d + 1.6;
+      box(stone.walls, stone.roofs, P, x, z, 1.4, 1.35, H, H + 4.4, SANDSTONE, 0.62);
+      box(stone.walls, stone.roofs, P, x, -d + 0.4, 1.1, 0.15, H + 4.4, H + 5.2, SANDSTONE, 0.62);
+      box(stone.walls, stone.roofs, P, x, -d + 0.4, 0.75, 0.15, H + 5.2, H + 6.0, SANDSTONE, 0.62);
+      box(stone.walls, stone.roofs, P, x, -d + 0.4, 0.4, 0.15, H + 6.0, H + 6.7, SANDSTONE, 0.62);
+      needle(stone.roofs, P, x, -d + 0.4, 0.18, H + 6.7, H + 7.6, 4, SLATE);
+      glows.add(M(x, H + 2.2, z - 1.37, Math.PI, [1.3, 2.2, 1]), [1.6, 0.95, 0.42]);
+    }
+    // The national flag over the ridge, lit: red, white, light blue.
+    const ridge = H + b.roofPitch * d;
+    box(props, props, P, 0, 0, 0.06, 0.06, ridge - 0.5, ridge + 5, IRON, 0.62);
+    const stripes: Rgb[] = [[2.4, 0.3, 0.35], [2.4, 2.4, 2.4], [0.2, 1.5, 2.3]];
+    stripes.forEach((c, i) => glows.add(M(1.0, ridge + 4.6 - i * 0.4, 0, Math.PI, [1.9, 0.42, 1]), c));
   }
 
   // --- Hôtel de Ville: wide front steps, two green bronze lions, roof balustrade and flag, chimneys, lanterns.
@@ -246,6 +266,25 @@ export function buildLandmarkExtras(): THREE.Group {
       box(props, props, P, s * 9, 3, 0.5, 0.5, H, H + 4.5, [0.5, 0.42, 0.32], 0.21); // chimneys
     }
     for (let x = -15; x <= 15; x += 6) if (Math.abs(x) > 10) glows.add(M(x, 2.8, -d - 0.25, Math.PI, [0.35, 0.5, 1]), [3, 1.6, 0.6]);
+    // Neoclassical pediment over the centre of the roofline, with its raking cornices.
+    const pw = 7.5;
+    const ph = 2.8;
+    const y0 = H + 0.9;
+    for (const [z, flip] of [[-d - 0.2, false], [-d + 0.6, true]] as const) {
+      const a = P(-pw, y0, z);
+      const bb = P(pw, y0, z);
+      const c = P(0, y0 + ph, z);
+      const uv6: [number, number, number, number, number, number] = [0, 0, 1, 0, 0.5, 1];
+      if (flip) flood.tri(a, bb, c, uv6, CREAM);
+      else flood.tri(a, c, bb, uv6, CREAM);
+    }
+    const slope = Math.atan2(ph, pw);
+    const rake = Math.hypot(pw, ph) + 0.4;
+    for (const s of [-1, 1]) {
+      const m = new THREE.Matrix4().multiplyMatrices(M((s * pw) / 2, y0 + ph / 2 + 0.12, -d + 0.2), new THREE.Matrix4().makeRotationZ(-s * slope));
+      flood.merge(new THREE.BoxGeometry(rake, 0.3, 1.1), m, CREAM);
+    }
+    box(flood, flood, P, 0, -d + 0.2, pw + 0.3, 0.55, y0 - 0.15, y0 + 0.15, CREAM, 0.21);
   }
 
   // --- Gare: copper cupola and lit clock faces on the stone tower, the arched glass of the hall, lit doors.
@@ -262,7 +301,7 @@ export function buildLandmarkExtras(): THREE.Group {
     for (let side = 0; side < 4; side++) {
       const a = (side * Math.PI) / 2;
       const r = t.half + 0.03;
-      glows.add(M(t.x + Math.sin(a) * r, top - 5, t.z + Math.cos(a) * r, a, [3.6, 3.6, 1]), [2.6, 2.3, 1.7]);
+      clockFaces.push(M(t.x + Math.sin(a) * (r + 0.02), top - 5, t.z + Math.cos(a) * (r + 0.02), a, [3.8, 3.8, 1]));
       // A slit window lower down each face.
       glows.add(M(t.x + Math.sin(a) * r, top - 15, t.z + Math.cos(a) * r, a, [0.9, 3.2, 1]), [1.4, 0.8, 0.35]);
     }
@@ -277,6 +316,19 @@ export function buildLandmarkExtras(): THREE.Group {
     for (let x = -3.75; x <= 3.75; x += 2.5) box(props, props, P, x, fz - 0.05, 0.12, 0.05, 4.6, 18, IRON, 0.9); // mullions
     box(props, props, P, 0, fz - 0.05, 5, 0.05, 8.7, 8.95, IRON, 0.9); // transom
     for (const x of [-4, 0, 4]) glows.add(M(x, 1.7, fz, Math.PI, [2.4, 3.2, 1]), [2.2, 1.5, 0.7]);
+    // Glass-and-iron canopy (marquise) over the doors, hung from the wall on tie rods, lit underneath.
+    const cz = fz - 2.3;
+    box(props, props, P, 0, cz, 9.5, 2.3, 5.0, 5.18, IRON, 0.9);
+    box(props, props, P, 0, cz - 2.25, 9.5, 0.06, 4.75, 5.3, IRON, 0.9); // fascia
+    glows.add(new THREE.Matrix4().multiplyMatrices(M(0, 4.97, cz, Math.PI), new THREE.Matrix4().makeRotationX(Math.PI / 2)).scale(v3(18.6, 4.4, 1)), [1.4, 0.95, 0.5]);
+    for (let x = -8; x <= 8; x += 4) {
+      const a = P(x, 9.2, fz);
+      const b = P(x, 5.2, fz - 4.4);
+      const dir = b.clone().sub(a);
+      const q = new THREE.Quaternion().setFromUnitVectors(v3(0, 1, 0), dir.clone().normalize());
+      props.merge(new THREE.CylinderGeometry(0.04, 0.04, dir.length(), 5), new THREE.Matrix4().compose(a.clone().addScaledVector(dir, 0.5), q, v3(1, 1, 1)), IRON);
+    }
+    gareSign = M(0, 5.85, cz - 2.32, Math.PI);
   }
 
   // --- Gëlle Fra: tall obelisk on a pedestal, the golden figure on top.
@@ -337,8 +389,110 @@ export function buildLandmarkExtras(): THREE.Group {
   group.add(glows.build(new THREE.PlaneGeometry(1, 1), 'landmark-glows'));
   group.add(stained.build());
   group.add(wheel.group, buildTree(lm('tree')));
-  group.userData.update = (time: number) => wheel.update(time);
+  const clocks = new TowerClocks(clockFaces);
+  group.add(clocks.group);
+  if (gareSign) group.add(signMesh('GARE', gareSign));
+  group.userData.update = (time: number, minutes: number) => {
+    wheel.update(time);
+    clocks.update(minutes);
+  };
   return group;
+}
+
+/** A lit dial texture: cream face, hour marks, a dark ring. */
+function dialTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#f4e6c4';
+  g.beginPath();
+  g.arc(128, 128, 120, 0, Math.PI * 2);
+  g.fill();
+  g.lineWidth = 10;
+  g.strokeStyle = '#2b2418';
+  g.stroke();
+  g.fillStyle = '#2b2418';
+  for (let i = 0; i < 12; i++) {
+    g.save();
+    g.translate(128, 128);
+    g.rotate((i / 12) * Math.PI * 2);
+    g.fillRect(-4, -108, 8, i % 3 === 0 ? 26 : 14);
+    g.restore();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+/**
+ * The Gare tower's four clock faces, lit from behind, with hands that show the
+ * shift's time (4:00pm → 6:00pm). Two draws.
+ */
+class TowerClocks {
+  readonly group = new THREE.Group();
+  private readonly hands: THREE.InstancedMesh;
+  private lastMinute = -1;
+
+  constructor(private readonly faces: THREE.Matrix4[]) {
+    const faceMat = new THREE.MeshBasicNodeMaterial({ transparent: true });
+    const tex = texture(dialTexture());
+    faceMat.colorNode = tex.rgb.mul(2.2) as N;
+    faceMat.opacityNode = tex.a as N;
+    const dials = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), faceMat, faces.length);
+    faces.forEach((m, i) => dials.setMatrixAt(i, m));
+    dials.computeBoundingSphere();
+    dials.name = 'gare-clock-faces';
+    const handMat = new THREE.MeshBasicNodeMaterial();
+    handMat.colorNode = vec3(0.06, 0.05, 0.04);
+    // Unit hand: pivot at the dial centre, pointing to 12.
+    this.hands = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), handMat, faces.length * 2);
+    this.hands.frustumCulled = false;
+    this.hands.name = 'gare-clock-hands';
+    this.group.add(dials, this.hands);
+    this.update(0);
+  }
+
+  /** `minutes`: game minutes since 4:00pm. */
+  update(minutes: number): void {
+    const m = Math.floor(minutes);
+    if (m === this.lastMinute) return;
+    this.lastMinute = m;
+    const total = 16 * 60 + m;
+    const hourA = (((total / 60) % 12) / 12) * Math.PI * 2;
+    const minA = ((total % 60) / 60) * Math.PI * 2;
+    const tmp = new THREE.Matrix4();
+    this.faces.forEach((f, i) => {
+      // Faces are 1×1 planes scaled to the dial: hand sizes are fractions of it. Clockwise seen from the front.
+      for (const [k, a, len, w] of [[0, hourA, 0.26, 0.05], [1, minA, 0.4, 0.035]] as const) {
+        tmp.multiplyMatrices(f, new THREE.Matrix4().makeRotationZ(-a).multiply(new THREE.Matrix4().makeTranslation(0, 0, 0.01 + k * 0.005)).multiply(new THREE.Matrix4().makeScale(w, len, 0.01)));
+        this.hands.setMatrixAt(i * 2 + k, tmp);
+      }
+    });
+    this.hands.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/** A lit lettered sign (canvas text), e.g. GARE over the station canopy. */
+function signMesh(text: string, at: THREE.Matrix4): THREE.Mesh {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 128;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#1b1712';
+  g.fillRect(0, 0, 512, 128);
+  g.fillStyle = '#ffd98a';
+  g.font = 'bold 96px Georgia, "Times New Roman", serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text.split('').join(' '), 256, 70);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.MeshBasicNodeMaterial();
+  m.colorNode = texture(t).rgb.mul(1.8) as N;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(5, 1.25), m);
+  mesh.applyMatrix4(at);
+  mesh.name = `sign-${text.toLowerCase()}`;
+  return mesh;
 }
 
 /**

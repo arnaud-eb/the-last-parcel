@@ -275,7 +275,7 @@ export class App {
     }
 
     if (!this.simPaused && !this.paused) this.sceneTime += dt;
-    this.world.animateLandmarks(this.sceneTime);
+    this.world.animateLandmarks(this.sceneTime, this.game.clock.minutes);
     const vp = this.van.body.translation();
     this.world.markets.update(this.simPaused || this.paused ? 0 : dt, { x: vp.x, z: vp.z, speed: this.van.speed });
     this.syncVisuals(dt);
