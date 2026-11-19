@@ -21,7 +21,6 @@ const rulesSeen = () => {
 type Toast = { id: number; from?: string; text: string };
 
 const THANKS = [
-  'Merci villmols!', // Luxembourgish
   'Merci beaucoup !', // French
   'Vielen Dank!', // German
   'Muito obrigado!', // Portuguese
@@ -107,7 +106,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
     const offEv = app.on((e: AppEvent) => {
       if (e.type === 'started') {
         const n = app.game.parcels.length;
-        toast(`Moien! ${n} parcel${n === 1 ? '' : 's'} left. Last run before Christmas Eve dinner. Merci and good luck.`, 'Dispatch', 4500);
+        toast(`${n} parcel${n === 1 ? '' : 's'} to go. Last run before Christmas Eve dinner. Good luck!`, 'Dispatch', 4500);
       } else if (e.type === 'delivered') {
         navigator.vibrate?.(60);
         toast(deliveredText(e.parcel), e.parcel.stop.address);
@@ -198,7 +197,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
           <div class="panel card">
             <p>December 24 · 4:00pm · Luxembourg</p>
             <h1>The Last Parcel</h1>
-            <p>The last Kuerier van of the year. Every present must arrive before Christmas Eve dinner at 6pm.</p>
+            <p>The last courier van of the year. Every present must arrive before Christmas Eve dinner at 6pm.</p>
             <button class="btn" onClick={startShift}>Start shift</button>
             <button class="link" data-testid="how-to-play" onClick={() => openRules('resume')}>How to play</button>
             {isIOS() && !isStandalone() && (
@@ -222,7 +221,7 @@ function Ui({ app, debug }: { app: App; debug: boolean }) {
 }
 
 function deliveredText(p: Parcel): string {
-  const thanks = p.type === 'grandma' ? 'Merci, mäi Schatz! Oma is so happy.' : THANKS[Math.floor(Math.random() * THANKS.length)];
+  const thanks = p.type === 'grandma' ? 'Thank you, dear! Grandma is so happy.' : THANKS[Math.floor(Math.random() * THANKS.length)];
   let pts = parcelValue(p);
   if (p.type === 'grandma') pts += PARCEL_RULES.grandmaBonus;
   if (p.type === 'express' && (p.deliveredAt ?? 999) < PARCEL_RULES.expressBy) pts += PARCEL_RULES.expressBonus;

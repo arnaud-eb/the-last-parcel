@@ -9,7 +9,7 @@ type Mood = 'hero' | 'ontime' | 'missed';
 const MOOD: Record<Rank, Mood> = { 'Christmas Hero': 'hero', 'On Time': 'ontime', 'Missed the Sleigh': 'missed' };
 
 const LINE: Record<Mood, { title: string; text: string }> = {
-  hero: { title: 'Christmas Hero!', text: 'The whole old town is talking about the Kuerier van.' },
+  hero: { title: 'Christmas Hero!', text: 'The whole old town is talking about the courier van.' },
   ontime: { title: 'On Time', text: 'Most of the town has its presents. Well driven!' },
   missed: { title: 'Missed the Sleigh', text: "Some trees will be bare tonight. Tomorrow there's a new route." },
 };
@@ -76,7 +76,7 @@ export function Tally({ app, onRules }: { app: App; onRules: () => void }) {
           </tfoot>
         </table>
         <div class="foot">
-          <p class="wish"><b>Schéi Chrëschtdeeg!</b></p>
+          <p class="wish"><b>Merry Christmas!</b></p>
           <button class="btn" onClick={() => { if (!app.opts.test) void enterFullscreen(); app.restart(); app.start(); }}>Drive again</button>
           <button class="link" onClick={onRules}>How scoring works</button>
         </div>

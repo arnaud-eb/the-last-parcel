@@ -115,9 +115,9 @@ Street names on addresses are real (Grand-Rue, Rue du Marché-aux-Herbes, Rue de
 
 Local flavour through text, not voice:
 
-- Dispatcher radio messages as short toasts: "Moien! 16 parcels today. Merci and good luck."
-- Recipients say thank you in Luxembourgish, French, German, Portuguese, English, matching the real mix of the city.
-- End screen: "Schéi Chrëschtdeeg!"
+- Dispatcher radio messages as short toasts, in English: "16 parcels to go. Last run before Christmas Eve dinner. Good luck!"
+- Recipients say thank you in French, German, Portuguese and English, the city's common languages. No Luxembourgish text (it can't be reviewed).
+- End screen: "Merry Christmas!"
 
 No real company names or logos. The courier is fictional (working name: **Kuerier**).
 
